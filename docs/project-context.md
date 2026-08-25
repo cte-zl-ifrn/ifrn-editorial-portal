@@ -54,6 +54,7 @@ Detalhes em [ADR-0001](decisions/0001-separacao-portal-e-repositorio-de-conteudo
 | 10 | Imagens em `assets/images`, arquivos em `assets/files` | [0007](decisions/0007-organizacao-de-assets.md) |
 | 11 | Frontend em Vue 3, TypeScript e Vite | [0008](decisions/0008-frontend-vue-3.md) |
 | 12 | Front matter preservado como texto bruto; parsing Markdown→Tiptap com parser controlado; serializer Tiptap→Markdown próprio | [0009](decisions/0009-conversao-markdown-tiptap-e-front-matter.md) |
+| 13 | Backend implementado com FastAPI (não Django) | [0010](decisions/0010-backend-fastapi.md) |
 
 O índice completo, com contexto e consequências de cada decisão, está em
 [docs/decisions/README.md](decisions/README.md).
@@ -100,7 +101,6 @@ Descrição completa em
 Ainda não decididas — não devem ser assumidas como resolvidas ao planejar
 trabalho futuro:
 
-- Framework ou estilo de implementação do backend Python.
 - Método exato de autenticação do usuário (OAuth com PKCE vs. fluxo de
   instalação associado à GitHub App).
 - Lista final de permissões por papel de usuário.

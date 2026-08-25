@@ -960,7 +960,6 @@ O MVP será considerado funcional quando um usuário autorizado conseguir:
 
 As decisões abaixo ainda devem ser confirmadas:
 
-- framework ou estilo de implementação do backend Python;
 - método exato de autenticação da GitHub App;
 - uso de OAuth com PKCE ou fluxo de instalação associado à aplicação;
 - lista final de permissões por papel;
