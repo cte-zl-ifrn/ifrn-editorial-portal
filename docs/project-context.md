@@ -6,11 +6,11 @@ são conhecidos e quais perguntas ainda não têm resposta. Ele não substitui o
 documento de arquitetura — serve como ponto de entrada rápido antes de
 consultar os detalhes.
 
-> Estado atual: **documentação e planejamento**. Nenhuma funcionalidade foi
-> implementada ainda. Não existem `frontend/`, `backend/` ou `infra/` no
-> repositório neste momento, e o `.github/dependabot.yml` ainda está no
-> template padrão (ecossistema não preenchido, sem workflows de CI
-> configurados).
+> Estado atual: **Fase 1 em desenvolvimento** — spike do caminho crítico de
+> leitura (login → sessão → autorização → GitHub App → leitura de um
+> documento Markdown), sem edição, upload, branch, commit ou Pull Request.
+> Ver [docs/phase-1-plan.md](phase-1-plan.md) para escopo, critérios de
+> aceite e limitações detalhadas.
 
 ## Visão geral
 
@@ -49,6 +49,7 @@ Detalhes em [ADR-0001](decisions/0001-separacao-portal-e-repositorio-de-conteudo
 | 8 | Cada alteração cria branch e Pull Request | [0006](decisions/0006-fluxo-branch-e-pull-request.md) |
 | 9 | Sem push direto na `main` | [0006](decisions/0006-fluxo-branch-e-pull-request.md) |
 | 10 | Imagens em `assets/images`, arquivos em `assets/files` | [0007](decisions/0007-organizacao-de-assets.md) |
+| 11 | Frontend em Vue 3, TypeScript e Vite | [0008](decisions/0008-frontend-vue-3.md) |
 
 O índice completo, com contexto e consequências de cada decisão, está em
 [docs/decisions/README.md](decisions/README.md).
@@ -95,7 +96,6 @@ Descrição completa em
 Ainda não decididas — não devem ser assumidas como resolvidas ao planejar
 trabalho futuro:
 
-- Framework do frontend.
 - Framework ou estilo de implementação do backend Python.
 - Método exato de autenticação do usuário (OAuth com PKCE vs. fluxo de
   instalação associado à GitHub App).
@@ -116,8 +116,13 @@ este documento.
 
 ## Sobre SECURITY.md e .github/dependabot.yml
 
-Antes da implantação de qualquer backend ou configuração de GitHub App em ambiente real, SECURITY.md e 
-.github/dependabot.yml deverão ser revisados e configurados.
+Atualizados na Fase 1: `SECURITY.md` descreve o canal de reporte de
+vulnerabilidades (GitHub Security Advisories) e a superfície de segurança
+introduzida pelo backend (sessão, GitHub App, segredos); `.github/dependabot.yml`
+passou do template vazio para monitorar os três ecossistemas reais
+(`npm` em `/frontend`, `pip` em `/backend`, `github-actions` em `/`). Ambos
+devem ser revisados novamente antes de qualquer implantação real em
+produção (contato institucional definitivo, políticas de retenção etc.).
 
 
 ## Referências
@@ -129,3 +134,11 @@ Antes da implantação de qualquer backend ou configuração de GitHub App em am
 - [docs/decisions/README.md](decisions/README.md)
 - [docs/glossary.md](glossary.md)
 - [docs/definition-of-done.md](definition-of-done.md)
+- [docs/phase-1-plan.md](phase-1-plan.md)
+- [docs/requirements/functional-requirements.md](requirements/functional-requirements.md)
+- [docs/requirements/non-functional-requirements.md](requirements/non-functional-requirements.md)
+- [docs/requirements/user-stories.md](requirements/user-stories.md)
+- [docs/architecture/system-context.md](architecture/system-context.md)
+- [docs/architecture/authentication-flow.md](architecture/authentication-flow.md)
+- [docs/architecture/authorization-model.md](architecture/authorization-model.md)
+- [docs/api/openapi.yaml](api/openapi.yaml)

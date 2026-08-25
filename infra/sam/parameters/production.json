@@ -1,0 +1,6 @@
+{
+  "Stage": "production",
+  "FrontendUrl": "PREENCHER_COM_DOMINIO_FINAL_DO_PORTAL",
+  "GithubOauthClientId": "PREENCHER_COM_CLIENT_ID_DE_PRODUCAO",
+  "SecretsManagerSecretArn": "arn:aws:secretsmanager:REGIAO:CONTA:secret:PREENCHER"
+}

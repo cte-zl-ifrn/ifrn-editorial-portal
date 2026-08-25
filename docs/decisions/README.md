@@ -48,6 +48,7 @@ Links para o documento de arquitetura ou outras ADRs relacionadas.
 | [0005](0005-backend-lambda-api-gateway.md) | Backend inicial em AWS Lambda + API Gateway HTTP API | Aceita |
 | [0006](0006-fluxo-branch-e-pull-request.md) | Toda alteração via branch própria e Pull Request, sem push direto na main | Aceita |
 | [0007](0007-organizacao-de-assets.md) | Organização de assets em `assets/images` e `assets/files` | Aceita |
+| [0008](0008-frontend-vue-3.md) | Frontend em Vue 3, TypeScript e Vite | Aceita |
 
 ## Como propor uma nova ADR
 
@@ -79,6 +80,7 @@ As 10 decisões iniciais foram agrupadas em 7 ADRs. O agrupamento foi feito para
 | D-08 | Branch por alteração             | ADR-006 |
 | D-09 | Pull Request obrigatório         | ADR-006 |
 | D-10 | Assets globais                   | ADR-007 |
+| D-11 | Frontend em Vue 3, TypeScript e Vite (resolve a questão em aberto "framework do frontend") | ADR-008 |
 
 ## Matriz decisão–risco–validação
 

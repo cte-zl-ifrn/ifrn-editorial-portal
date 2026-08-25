@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ifrn-editorial-portal — backend da Fase 1 (spike de leitura).
+  Não implantado nesta fase — ver docs/phase-1-plan.md. Este template
+  documenta a infraestrutura mínima prevista em ADR-0005; segredos reais
+  ficam no AWS Secrets Manager, nunca neste arquivo.
+
+Parameters:
+  Stage:
+    Type: String
+    Default: development
+    AllowedValues:
+      - development
+      - production
+    Description: Ambiente de implantação (ver infra/environments/*.yaml).
+  FrontendUrl:
+    Type: String
+    Description: Origem do frontend, usada para CORS e redirecionamento pós-login.
+  GithubOauthClientId:
+    Type: String
+    Description: Client ID da OAuth App do GitHub (não sensível).
+  SecretsManagerSecretArn:
+    Type: String
+    Description: >
+      ARN do segredo no AWS Secrets Manager contendo client secret da OAuth
+      App, chave privada da GitHub App e segredo de sessão. Concedido em
+      tempo de implantação — não é criado por este template.
+
+Conditions:
+  IsProduction: !Equals [!Ref Stage, production]
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 10
+    MemorySize: 256
+    Environment:
+      Variables:
+        GITHUB_OWNER: cte-zl-ifrn
+        GITHUB_REPOSITORY: central-ajuda
+        GITHUB_BASE_BRANCH: main
+        SAMPLE_DOCUMENT_PATH: _docs/ambiente-virtual/acesso-moodle.md
+        FRONTEND_URL: !Ref FrontendUrl
+        GITHUB_OAUTH_CLIENT_ID: !Ref GithubOauthClientId
+        COOKIE_SECURE: !If [IsProduction, "true", "false"]
+        COOKIE_SAMESITE: !If [IsProduction, "none", "lax"]
+        # Demais segredos (GITHUB_OAUTH_CLIENT_SECRET, GITHUB_APP_ID,
+        # GITHUB_APP_PRIVATE_KEY, SESSION_SECRET) são injetados a partir de
+        # SecretsManagerSecretArn no momento da implantação real — nunca
+        # como valor literal neste template.
+
+Resources:
+  PortalApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Stage
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref FrontendUrl
+        AllowCredentials: true
+        AllowMethods:
+          - GET
+          - POST
+        AllowHeaders:
+          - content-type
+
+  PortalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../backend/
+      Handler: src.lambda_handler.handler
+      Policies:
+        - Statement:
+            - Sid: ReadPortalSecrets
+              Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Ref SecretsManagerSecretArn
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PortalApi
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: URL base da API Gateway HTTP API
+    Value: !Sub "https://${PortalApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+  FunctionArn:
+    Description: ARN da função Lambda do backend
+    Value: !GetAtt PortalFunction.Arn

@@ -1,0 +1,272 @@
+openapi: 3.0.3
+info:
+  title: IFRN Editorial Portal API — Fase 1
+  description: >-
+    API do ifrn-editorial-portal, escopo da Fase 1 (caminho crítico de
+    leitura): health check, autenticação, sessão, autorização e leitura de
+    um documento Markdown de demonstração no repositório
+    cte-zl-ifrn/central-ajuda. Não inclui edição, upload, criação de
+    branches/commits/Pull Requests, conforme docs/phase-1-plan.md.
+  version: "0.1.0"
+servers:
+  - url: http://localhost:8000
+    description: Backend local (desenvolvimento)
+
+tags:
+  - name: health
+  - name: auth
+  - name: me
+  - name: documents
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Verifica se o backend está no ar
+      description: >-
+        Não exige autenticação e não acessa o GitHub nem qualquer
+        dependência externa.
+      security: []
+      responses:
+        "200":
+          description: Backend saudável
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+
+  /auth/login:
+    get:
+      tags: [auth]
+      summary: Inicia o fluxo de autenticação OAuth com o GitHub
+      description: >-
+        Gera um `state` de curta duração e redireciona o navegador para a
+        página de autorização OAuth do GitHub.
+      security: []
+      responses:
+        "302":
+          description: Redirecionamento para o GitHub
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL de autorização OAuth do GitHub
+
+  /auth/callback:
+    get:
+      tags: [auth]
+      summary: Callback do OAuth do GitHub
+      description: >-
+        Valida `state` e `code`, identifica o usuário, verifica sua
+        permissão no repositório `cte-zl-ifrn/central-ajuda` e cria a
+        sessão do portal.
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Código de autorização emitido pelo GitHub
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Valor de state gerado em /auth/login
+      responses:
+        "302":
+          description: >-
+            Sessão criada; redirecionamento de volta para o frontend, com
+            cookie de sessão definido.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+            Location:
+              schema:
+                type: string
+        "400":
+          description: state ausente, inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Falha de comunicação com o GitHub durante o callback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Encerra a sessão do portal
+      description: Idempotente — chamar sem sessão ativa não é erro.
+      security: []
+      responses:
+        "204":
+          description: Sessão encerrada (ou já inexistente)
+
+  /api/me:
+    get:
+      tags: [me]
+      summary: Retorna a identidade do usuário autenticado e seu status de autorização
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Usuário autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+              example:
+                user:
+                  login: "maria.silva"
+                  name: "Maria Silva"
+                  avatar_url: "https://avatars.githubusercontent.com/u/12345"
+                authorized: true
+                repository_permission: "write"
+        "401":
+          description: Sem sessão válida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/documents/sample:
+    get:
+      tags: [documents]
+      summary: Lê o documento Markdown de demonstração da Fase 1
+      description: >-
+        Lê, via GitHub App, o arquivo fixo
+        `_docs/ambiente-virtual/acesso-moodle.md` no repositório
+        `cte-zl-ifrn/central-ajuda`, branch `main`. O caminho é fixo no
+        backend nesta fase; não é possível informar outro caminho via
+        parâmetro de requisição.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Documento lido com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+              example:
+                path: "_docs/ambiente-virtual/acesso-moodle.md"
+                name: "acesso-moodle.md"
+                content: "---\ntitle: Acesso ao Moodle\n---\n\n# Como acessar o Moodle\n..."
+                sha: "8d233eaa7ad166d412ada7a87a8a28ab67072197"
+                encoding: "utf-8"
+        "401":
+          description: Sem sessão válida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Usuário autenticado, mas não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Documento de demonstração não encontrado no repositório
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Falha ao ler o repositório via GitHub App
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: portal_session
+      description: >-
+        Cookie de sessão HttpOnly/Secure criado após /auth/callback. O
+        nome exato do cookie é definido pela implementação do backend
+        (ver backend/README.md).
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+
+    GithubUser:
+      type: object
+      required: [login]
+      properties:
+        login:
+          type: string
+        name:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          nullable: true
+
+    MeResponse:
+      type: object
+      required: [user, authorized]
+      properties:
+        user:
+          $ref: "#/components/schemas/GithubUser"
+        authorized:
+          type: boolean
+        repository_permission:
+          type: string
+          description: >-
+            Permissão efetiva retornada pelo GitHub para o repositório
+            fixo (`none`, `read`, `triage`, `write`, `maintain`, `admin`).
+          nullable: true
+
+    DocumentResponse:
+      type: object
+      required: [path, name, content, sha, encoding]
+      properties:
+        path:
+          type: string
+          example: "_docs/ambiente-virtual/acesso-moodle.md"
+        name:
+          type: string
+          example: "acesso-moodle.md"
+        content:
+          type: string
+          description: Conteúdo Markdown decodificado (UTF-8)
+        sha:
+          type: string
+          description: SHA do blob no Git, para detecção futura de conflitos
+        encoding:
+          type: string
+          enum: [utf-8]
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Código de erro estável, sem detalhes internos
+          example: "unauthenticated"
+        message:
+          type: string
+          description: Mensagem legível para o usuário final
+        correlation_id:
+          type: string
+          description: Identificador de correlação para rastreamento em logs

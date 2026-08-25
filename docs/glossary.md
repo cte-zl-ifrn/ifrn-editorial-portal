@@ -29,3 +29,10 @@ parte institucional.
 | **API Gateway HTTP API** | Serviço da AWS usado para expor as funções Lambda do backend como endpoints HTTP. |
 | **AWS Lambda** | Serviço de computação serverless da AWS usado para executar o backend do portal (ver [ADR-0005](decisions/0005-backend-lambda-api-gateway.md)). |
 | **AWS Secrets Manager** | Serviço da AWS usado para armazenar segredos do backend (chave privada da GitHub App, client secret, segredos de sessão). |
+| **Vue 3** | Framework de componentes escolhido para o frontend do portal, usado com Composition API (ver [ADR-0008](decisions/0008-frontend-vue-3.md)). |
+| **Vite** | Build tool e servidor de desenvolvimento usado no frontend, produz um build estático compatível com GitHub Pages. |
+| **Composable** | Função reutilizável do Vue 3 (Composition API) que encapsula estado e lógica com reatividade, usada no frontend no lugar de mixins. |
+| **Spike técnico** | Implementação exploratória, com escopo reduzido e prazo curto, feita para validar um caminho arquitetural antes de construir a solução completa. A Fase 1 é um spike do caminho crítico de leitura (ver [docs/phase-1-plan.md](phase-1-plan.md)). |
+| **Health check** | Endpoint (`GET /health`) que informa se o backend está no ar, sem exigir autenticação nem acessar o GitHub. |
+| **OpenAPI** | Especificação usada para descrever formalmente os endpoints da API do portal, seus parâmetros, respostas e esquemas. Ver [docs/api/openapi.yaml](api/openapi.yaml). |
+| **Sessão de portal** | Estado de login do usuário no `ifrn-editorial-portal`, mantido pelo backend após validar o retorno do GitHub — distinto da identidade técnica da GitHub App. Ver [docs/architecture/authentication-flow.md](architecture/authentication-flow.md). |

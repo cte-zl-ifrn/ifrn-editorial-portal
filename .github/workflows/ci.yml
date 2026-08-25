@@ -1,0 +1,97 @@
+name: CI
+
+# CI mínimo da Fase 1: lint, testes e build do frontend; lint e testes do
+# backend; verificação de arquivos sensíveis. Não há workflow de
+# publicação/implantação em produção nesta fase — ver docs/phase-1-plan.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (lint, testes, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Verificação de tipos
+        run: npm run type-check
+
+      - name: Testes unitários
+        run: npm run test
+
+      - name: Build de produção
+        run: npm run build
+
+  backend:
+    name: Backend (lint, testes)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Instalar dependências
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check src tests
+
+      - name: Testes
+        run: pytest
+
+  sensitive-files-check:
+    name: Verificação de arquivos sensíveis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rejeitar .env, chaves privadas e afins versionados
+        run: |
+          set -euo pipefail
+
+          # .env.example / .env.sample / .env.template são templates
+          # intencionais e não entram na verificação.
+          matches=$(git ls-files \
+            | grep -E '(^|/)\.env(\..+)?$|\.pem$|\.key$|_rsa$|_ed25519$' \
+            | grep -vE '\.env\.(example|sample|template)$' || true)
+          if [ -n "$matches" ]; then
+            echo "Arquivos sensíveis não devem ser versionados:"
+            echo "$matches"
+            exit 1
+          fi
+
+          if git grep -nIE 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- . ':(exclude).github/workflows/ci.yml'; then
+            echo "Conteúdo compatível com chave privada encontrado no repositório."
+            exit 1
+          fi
+
+          echo "Nenhum arquivo sensível encontrado."

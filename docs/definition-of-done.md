@@ -1,10 +1,16 @@
 # Definition of Done
 
 Critérios mínimos para considerar uma alteração concluída no
-`ifrn-editorial-portal`. O projeto está na fase de documentação e
-planejamento (ver [docs/project-context.md](project-context.md)), então os
-critérios abaixo cobrem tanto o estado atual (documentação e decisões)
-quanto o que passa a valer assim que a implementação começar.
+`ifrn-editorial-portal`. O projeto está executando a Fase 1 (spike do
+caminho crítico de leitura — ver [docs/project-context.md](project-context.md)
+e [docs/phase-1-plan.md](phase-1-plan.md)), então os critérios abaixo cobrem
+tanto documentação/decisões quanto código, e continuam válidos para as fases
+seguintes.
+
+> Critérios de aceite específicos da Fase 1 (ex.: caminho fixo do documento
+> de exemplo, permissões somente leitura da GitHub App nesta fase) estão em
+> [docs/phase-1-plan.md](phase-1-plan.md#critérios-de-aceite) e não são
+> repetidos aqui.
 
 ## Regras gerais, sempre válidas
 

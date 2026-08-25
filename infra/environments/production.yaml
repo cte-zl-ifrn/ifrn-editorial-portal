@@ -1,0 +1,17 @@
+# Configuração conceitual do ambiente de produção.
+# Valores reais (domínio, URLs) ainda não definidos — ver
+# docs/project-context.md#questões-em-aberto. Este arquivo documenta a
+# forma esperada da configuração, não valores prontos para uso.
+#
+# Nenhuma implantação em produção deve ocorrer sem confirmação explícita
+# e sem que as questões em aberto relevantes (domínio, CORS/cookies,
+# retenção de logs, responsável por revisão) estejam resolvidas.
+
+stage: production
+frontend_url: PREENCHER_QUANDO_O_DOMINIO_FOR_DEFINIDO
+backend_url: PREENCHER_QUANDO_A_API_FOR_IMPLANTADA
+cookie_secure: true
+cookie_samesite: none
+notes: >
+  Ambiente de produção — fora do escopo da Fase 1. Ver
+  infra/sam/README.md para os passos mínimos de uma implantação real.
