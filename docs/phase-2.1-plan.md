@@ -144,20 +144,20 @@ e `backend/src/models/responses.py` atualizados;
 
 ## Roteiro de validação manual (Fase 2.1.5)
 
-A ser executado e registrado (mesmo formato de
-[docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md))
-quando a implementação estiver concluída:
+Executado e registrado em
+[docs/phase-2.1.5-manual-validation.md](phase-2.1.5-manual-validation.md)
+(2026-08-25):
 
-- [ ] Login com usuário autorizado → documento carregado e renderizado no
+- [x] Login com usuário autorizado → documento carregado e renderizado no
       Tiptap, comparado visualmente com o Markdown original (mesmos
       títulos, parágrafos, listas, links, imagens).
-- [ ] Painel de metadados exibe corretamente os campos do front matter do
+- [x] Painel de metadados exibe corretamente os campos do front matter do
       documento real.
-- [ ] Login com usuário sem permissão → acesso negado, sem nenhum
+- [x] Login com usuário sem permissão → acesso negado, sem nenhum
       vazamento de conteúdo do documento (nem front matter, nem corpo).
-- [ ] Tentativa de editar o conteúdo no Tiptap confirma que o editor está
+- [x] Tentativa de editar o conteúdo no Tiptap confirma que o editor está
       em modo somente leitura (nenhuma alteração é possível).
-- [ ] Inspeção da resposta de rede confirma que `front_matter_raw` bate
+- [x] Inspeção da resposta de rede confirma que `front_matter_raw` bate
       exatamente com o início do arquivo original no GitHub.
 
 ## Dependências
