@@ -1,12 +1,13 @@
-# Backend — `ifrn-editorial-portal` (Fase 1)
+# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1)
 
 Backend em Python (FastAPI), pensado para rodar em AWS Lambda por trás de
 um API Gateway HTTP API (ver
 [ADR-0005](../docs/decisions/0005-backend-lambda-api-gateway.md)), mas
 executável localmente com `uvicorn` sem qualquer dependência de AWS.
 
-Escopo desta fase: [docs/phase-1-plan.md](../docs/phase-1-plan.md). Contrato
-completo da API: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
+Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md) e
+[docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md). Contrato completo da
+API: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Por que FastAPI
 
@@ -25,6 +26,7 @@ backend/
 │   ├── services/    # orquestração (login, autorização, leitura de documento)
 │   ├── github/      # cliente da API do GitHub e autenticação da GitHub App
 │   ├── auth/         # sessão e state OAuth (cookies assinados)
+│   ├── markdown/      # separação front matter/corpo (Fase 2.1, ADR-0009)
 │   ├── models/       # esquemas de resposta (Pydantic)
 │   ├── config.py     # configuração via variáveis de ambiente
 │   ├── logging.py    # logging estruturado com correlation_id

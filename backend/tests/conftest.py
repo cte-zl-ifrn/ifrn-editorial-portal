@@ -27,7 +27,7 @@ def settings(test_private_key_pem: str) -> Settings:
         github_owner="cte-zl-ifrn",
         github_repository="central-ajuda",
         github_base_branch="main",
-        sample_document_path="_docs/ambiente-virtual/acesso-moodle.md",
+        sample_document_path="_docs/proitec/como-fazer-cursos.md",
         github_oauth_client_id="test-client-id",
         github_oauth_client_secret="test-client-secret",
         github_oauth_redirect_uri="http://localhost:8000/auth/callback",

@@ -20,7 +20,10 @@ class Settings(BaseSettings):
     github_owner: str = "cte-zl-ifrn"
     github_repository: str = "central-ajuda"
     github_base_branch: str = "main"
-    sample_document_path: str = "_docs/ambiente-virtual/acesso-moodle.md"
+    # Trocado na Fase 2.1 (era _docs/ambiente-virtual/acesso-moodle.md):
+    # este documento exercita listas com marcadores, o que o anterior não
+    # tinha — ver docs/phase-2.1-plan.md.
+    sample_document_path: str = "_docs/proitec/como-fazer-cursos.md"
 
     # OAuth do GitHub (identidade da pessoa usuária).
     github_oauth_client_id: str = ""

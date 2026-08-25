@@ -3,6 +3,8 @@ import { onMounted } from 'vue'
 import { useSession } from '../composables/useSession'
 import { useSampleDocument } from '../composables/useSampleDocument'
 import StatusMessage from '../components/StatusMessage.vue'
+import FrontMatterPanel from '../components/FrontMatterPanel.vue'
+import DocumentViewer from '../components/DocumentViewer.vue'
 
 const { user, logout } = useSession()
 const { status, document, errorMessage, load } = useSampleDocument()
@@ -21,7 +23,7 @@ onMounted(load)
     </header>
 
     <section aria-labelledby="sample-document-heading">
-      <h2 id="sample-document-heading">Documento de demonstração (Fase 1)</h2>
+      <h2 id="sample-document-heading">Documento de demonstração (Fase 2.1 — somente leitura)</h2>
 
       <StatusMessage v-if="status === 'loading'">Carregando documento…</StatusMessage>
 
@@ -29,10 +31,11 @@ onMounted(load)
         Não foi possível carregar o documento: {{ errorMessage }}
       </StatusMessage>
 
-      <article v-else-if="status === 'loaded' && document" class="document">
+      <div v-else-if="status === 'loaded' && document" class="document">
         <p class="document__path"><code>{{ document.path }}</code></p>
-        <pre class="document__content">{{ document.content }}</pre>
-      </article>
+        <FrontMatterPanel :front-matter="document.front_matter" />
+        <DocumentViewer :markdown="document.body" />
+      </div>
     </section>
   </main>
 </template>
@@ -52,16 +55,14 @@ onMounted(load)
   align-items: center;
 }
 
-.document__path {
-  color: #6b7280;
+.document {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.document__content {
-  white-space: pre-wrap;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 1rem;
+.document__path {
+  color: #6b7280;
 }
 
 button {

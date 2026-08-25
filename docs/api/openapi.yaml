@@ -1,13 +1,16 @@
 openapi: 3.0.3
 info:
-  title: IFRN Editorial Portal API — Fase 1
+  title: IFRN Editorial Portal API — Fase 1 / Fase 2.1
   description: >-
-    API do ifrn-editorial-portal, escopo da Fase 1 (caminho crítico de
-    leitura): health check, autenticação, sessão, autorização e leitura de
-    um documento Markdown de demonstração no repositório
-    cte-zl-ifrn/central-ajuda. Não inclui edição, upload, criação de
-    branches/commits/Pull Requests, conforme docs/phase-1-plan.md.
-  version: "0.1.0"
+    API do ifrn-editorial-portal. Fase 1: health check, autenticação,
+    sessão, autorização e leitura de um documento Markdown de demonstração
+    no repositório cte-zl-ifrn/central-ajuda. Fase 2.1: a leitura do
+    documento passou a retornar o front matter separado do corpo (ver
+    ADR-0009), para renderização no editor Tiptap em modo somente leitura
+    no frontend. Não inclui edição, upload, criação de
+    branches/commits/Pull Requests, conforme docs/phase-1-plan.md e
+    docs/phase-2.1-plan.md.
+  version: "0.2.0"
 servers:
   - url: http://localhost:8000
     description: Backend local (desenvolvimento)
@@ -141,13 +144,15 @@ paths:
   /api/documents/sample:
     get:
       tags: [documents]
-      summary: Lê o documento Markdown de demonstração da Fase 1
+      summary: Lê o documento Markdown de demonstração, com front matter separado do corpo
       description: >-
         Lê, via GitHub App, o arquivo fixo
-        `_docs/ambiente-virtual/acesso-moodle.md` no repositório
+        `_docs/proitec/como-fazer-cursos.md` no repositório
         `cte-zl-ifrn/central-ajuda`, branch `main`. O caminho é fixo no
         backend nesta fase; não é possível informar outro caminho via
-        parâmetro de requisição.
+        parâmetro de requisição. `front_matter_raw + body` reproduz o
+        arquivo original (ver ADR-0009); `front_matter` é o mesmo conteúdo
+        já parseado, apenas para exibição.
       security:
         - sessionCookie: []
       responses:
@@ -158,11 +163,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/DocumentResponse"
               example:
-                path: "_docs/ambiente-virtual/acesso-moodle.md"
-                name: "acesso-moodle.md"
-                content: "---\ntitle: Acesso ao Moodle\n---\n\n# Como acessar o Moodle\n..."
+                path: "_docs/proitec/como-fazer-cursos.md"
+                name: "como-fazer-cursos.md"
                 sha: "8d233eaa7ad166d412ada7a87a8a28ab67072197"
-                encoding: "utf-8"
+                front_matter:
+                  title: "Como fazer os cursos do ProITEC?"
+                  categories: ["proitec", "ambiente_virtual", "chamados"]
+                front_matter_raw: "---\ntitle: Como fazer os cursos do ProITEC?\n---\n"
+                body: "\n# Como fazer os cursos do ProITEC?\n\n..."
+        "502":
+          description: Falha ao ler o repositório via GitHub App, ou front matter inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                github_communication_error:
+                  value: { error: "github_communication_error" }
+                invalid_front_matter:
+                  value: { error: "invalid_front_matter" }
+                invalid_document_encoding:
+                  value: { error: "invalid_document_encoding" }
         "401":
           description: Sem sessão válida
           content:
@@ -177,12 +198,6 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Documento de demonstração não encontrado no repositório
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "502":
-          description: Falha ao ler o repositório via GitHub App
           content:
             application/json:
               schema:
@@ -238,23 +253,35 @@ components:
 
     DocumentResponse:
       type: object
-      required: [path, name, content, sha, encoding]
+      required: [path, name, sha, front_matter, front_matter_raw, body]
       properties:
         path:
           type: string
-          example: "_docs/ambiente-virtual/acesso-moodle.md"
+          example: "_docs/proitec/como-fazer-cursos.md"
         name:
           type: string
-          example: "acesso-moodle.md"
-        content:
-          type: string
-          description: Conteúdo Markdown decodificado (UTF-8)
+          example: "como-fazer-cursos.md"
         sha:
           type: string
           description: SHA do blob no Git, para detecção futura de conflitos
-        encoding:
+        front_matter:
+          type: object
+          description: >-
+            Front matter YAML já parseado, apenas para exibição (ver
+            ADR-0009). Não é a fonte de verdade para reconstrução do
+            arquivo — essa é `front_matter_raw`.
+          additionalProperties: true
+        front_matter_raw:
           type: string
-          enum: [utf-8]
+          description: >-
+            Bloco de front matter, incluindo os delimitadores `---`,
+            preservado como texto exatamente como está no arquivo
+            original. Vazio se o documento não tiver front matter.
+        body:
+          type: string
+          description: >-
+            Markdown do documento após o front matter, decodificado em
+            UTF-8. `front_matter_raw + body` reproduz o arquivo original.
 
     ErrorResponse:
       type: object

@@ -48,6 +48,11 @@ class InvalidDocumentEncodingError(PortalError):
     status_code = 502
 
 
+class InvalidFrontMatterError(PortalError):
+    error_code = "invalid_front_matter"
+    status_code = 502
+
+
 class MissingConfigurationError(PortalError):
     error_code = "missing_configuration"
     status_code = 500

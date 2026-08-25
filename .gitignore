@@ -228,6 +228,12 @@ coverage/
 .env.local
 .env.*.local
 
+# O padrão Python `lib/` acima (seção "Distribution / packaging") também
+# casava com frontend/src/lib/ (código-fonte real, ver Fase 2.1) — nunca
+# foi commitado por causa disso. Reabre explicitamente.
+!frontend/src/lib/
+!frontend/src/lib/**
+
 # AWS SAM (infra/) — artefatos de build/implantação, nunca segredos versionados
 .aws-sam/
 samconfig.toml

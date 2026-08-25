@@ -47,21 +47,33 @@ leitura** — sem ainda permitir edição (isso é Fase 2.2).
 
 ## Escopo de nós (parser Markdown → Tiptap)
 
-Baseado no documento de demonstração atual
-(`_docs/ambiente-virtual/acesso-moodle.md`), o parser da Fase 2.1 precisa
-cobrir, no mínimo: parágrafos, títulos (`#`–`######`), listas com
-marcadores e numeradas, negrito, itálico, links e imagens (com texto
-alternativo). Se, ao implementar, o documento de demonstração não exercitar
-algum desses nós, o documento de demonstração deve ser trocado por outro
-real do `central-ajuda` que os exercite (não inventar Markdown sintético
-apenas para testar) — documentar a escolha, como já feito na Fase 1 para
-`_docs/ambiente-virtual/acesso-moodle.md`.
+O parser da Fase 2.1 cobre, no mínimo: parágrafos, títulos (`#`–`######`),
+listas com marcadores e numeradas (incluindo listas aninhadas), negrito,
+itálico, links e imagens (com texto alternativo). `code` (inline) e
+`horizontalRule` foram incluídos incidentalmente por virem de fábrica com
+o `@tiptap/starter-kit`, sem custo adicional de implementação.
 
-Nós fora deste conjunto mínimo (tabelas, blocos de aviso, blocos de
-código, separadores, passos numerados) ficam explicitamente fora da Fase
-2.1; se aparecerem no corpo do documento de demonstração, devem ser
-preservados como texto bruto/nó genérico visível (não removidos
-silenciosamente) até serem suportados.
+**Documento de demonstração trocado**: `_docs/ambiente-virtual/acesso-moodle.md`
+(usado desde a Fase 1) não continha nenhuma lista com marcadores — apenas
+uma lista numerada. Foi substituído por
+`_docs/proitec/como-fazer-cursos.md`, que exercita títulos em três
+níveis, listas com marcadores e numeradas (inclusive aninhadas), negrito e
+links. Nenhum documento atualmente publicado no `central-ajuda` contém
+imagem ou itálico — esses dois nós são cobertos apenas por fixtures
+isoladas em `frontend/tests/markdownToTiptap.spec.ts`, não pelo documento
+de demonstração ao vivo. Isso é uma limitação de conteúdo real disponível,
+não do parser.
+
+Nós fora deste conjunto mínimo (tabelas, blocos de aviso reais, blocos de
+código, HTML embutido) não são interpretados: um bloco/token desconhecido
+é normalizado como texto visível (a partir do Markdown-fonte bruto ou do
+conteúdo do próprio token), nunca descartado silenciosamente — ver
+`frontend/src/lib/markdownToTiptap.ts`. Em particular, o documento de
+demonstração real contém dois blocos `<blockquote class="...">` (um
+padrão de "dica"/"aviso" do site) e uma lista de tarefas (`- [x]`); ambos
+aparecem como texto literal simples, comprovado por
+`frontend/tests/markdownToTiptap.realDocument.spec.ts`, que roda o parser
+contra o corpo real do documento.
 
 ## Entregáveis
 
@@ -76,23 +88,42 @@ silenciosamente) até serem suportados.
 5. `docs/glossary.md` atualizado com termos novos (ex.: front matter
    bruto, nó Tiptap).
 
+**Entregue** (nomes de arquivo reais): `backend/src/markdown/front_matter.py`
+(+ `backend/src/errors.py:InvalidFrontMatterError`,
+`backend/tests/test_front_matter.py`); `backend/src/services/document_service.py`
+e `backend/src/models/responses.py` atualizados;
+`frontend/src/lib/markdownToTiptap.ts` (+
+`frontend/tests/markdownToTiptap.spec.ts` e
+`markdownToTiptap.realDocument.spec.ts`);
+`frontend/src/components/{FrontMatterPanel,DocumentViewer}.vue`;
+`frontend/src/views/HomeView.vue` atualizado.
+
 ## Critérios de aceite / definição de pronto
 
-- [ ] `GET /api/documents/sample` retorna `front_matter`,
+- [x] `GET /api/documents/sample` retorna `front_matter`,
       `front_matter_raw`, `body`, `path`, `name`, `sha` — sem quebrar as
       regras de autorização já existentes (RF-13 a RF-16).
-- [ ] Um usuário não autorizado continua recebendo HTTP 403, sem receber
+- [x] Um usuário não autorizado continua recebendo HTTP 403, sem receber
       nenhum dos campos do documento.
-- [ ] O corpo do documento de demonstração é renderizado no Tiptap em modo
-      somente leitura, visualmente equivalente ao Markdown original (título,
-      parágrafos, listas, links, imagens reconhecíveis).
-- [ ] O painel de metadados exibe os campos do front matter parseado.
-- [ ] Testes automatizados cobrem, no mínimo: cada tipo de nó do escopo
-      mínimo (parser), arquivo sem front matter, front matter malformado
-      (backend), e o endpoint com usuário autorizado/não autorizado.
-- [ ] `ruff check`, `pytest`, `eslint`, `vue-tsc` e `vitest` passam.
-- [ ] `docs/api/openapi.yaml` reflete o novo contrato.
-- [ ] Nenhuma chamada de escrita à API do GitHub foi introduzida.
+- [x] O corpo do documento de demonstração é renderizado no Tiptap em modo
+      somente leitura (`DocumentViewer.vue`, `editable: false`), visualmente
+      equivalente ao Markdown original (título, parágrafos, listas, links).
+      Imagens não puderam ser confirmadas visualmente contra o documento
+      real (nenhum documento do `central-ajuda` contém imagem hoje — ver
+      "Escopo de nós" acima); cobertas por fixtures isoladas.
+- [x] O painel de metadados (`FrontMatterPanel.vue`) exibe os campos do
+      front matter parseado.
+- [x] Testes automatizados cobrem, no mínimo: cada tipo de nó do escopo
+      mínimo (`frontend/tests/markdownToTiptap.spec.ts`, 15 casos), o
+      corpo real do documento de demonstração
+      (`markdownToTiptap.realDocument.spec.ts`), arquivo sem front matter,
+      front matter malformado (`backend/tests/test_front_matter.py`,
+      `test_documents.py`), e o endpoint com usuário autorizado/não
+      autorizado.
+- [x] `ruff check`, `pytest` (31 testes), `eslint`, `vue-tsc` e `vitest`
+      (38 testes) passam; `npm run build` gera bundle de produção sem erro.
+- [x] `docs/api/openapi.yaml` reflete o novo contrato.
+- [x] Nenhuma chamada de escrita à API do GitHub foi introduzida.
 
 ## Riscos técnicos e decisões de arquitetura
 
@@ -135,11 +166,18 @@ quando a implementação estiver concluída:
   GitHub App já funcionando).
 - Nenhuma dependência de infraestrutura AWS real.
 
-## Decisões em aberto (específicas da Fase 2.1)
+## Decisões tomadas durante a implementação
 
-- Se o documento de demonstração atual não cobrir todos os nós do escopo
-  mínimo, qual documento real do `central-ajuda` o substitui (a decidir
-  durante a implementação, documentando a escolha como já feito na Fase 1).
-- Biblioteca específica de tokenização Markdown a adotar no frontend
-  (`markdown-it` é a opção recomendada em ADR-0009, a confirmar com um
-  spike curto no início da implementação).
+- Documento de demonstração trocado para `_docs/proitec/como-fazer-cursos.md`
+  — ver "Escopo de nós" acima.
+- Biblioteca de tokenização Markdown confirmada: `markdown-it`, sem
+  plugins (o escopo mínimo de nós não exige nenhum). Configurada com
+  `html: false` deliberadamente, para que HTML embutido no Markdown nunca
+  seja interpretado como marcação (permanece texto literal) — reforça a
+  seção 10.3 do documento de arquitetura sem exigir lógica adicional de
+  sanitização nesta fase.
+- Imagem misturada a texto corrido no mesmo parágrafo (em vez de ocupar o
+  parágrafo inteiro) não é hoisted para um nó de bloco — vira um
+  marcador de texto `[imagem: alt]`. Nenhum documento real do
+  `central-ajuda` faz isso hoje; documentado como limitação conhecida no
+  código-fonte do parser.

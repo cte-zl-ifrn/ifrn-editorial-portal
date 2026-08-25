@@ -1,5 +1,5 @@
 /**
- * Tipos espelham docs/api/openapi.yaml (Fase 1).
+ * Tipos espelham docs/api/openapi.yaml (Fase 1 / Fase 2.1).
  */
 
 export interface GithubUser {
@@ -14,12 +14,17 @@ export interface MeResponse {
   repository_permission: string | null
 }
 
+/**
+ * front_matter_raw + body reproduz o arquivo original (ver ADR-0009);
+ * front_matter é o mesmo conteúdo já parseado, só para exibição.
+ */
 export interface DocumentResponse {
   path: string
   name: string
-  content: string
   sha: string
-  encoding: string
+  front_matter: Record<string, unknown>
+  front_matter_raw: string
+  body: string
 }
 
 export interface ApiErrorBody {

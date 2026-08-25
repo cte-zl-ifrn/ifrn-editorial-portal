@@ -1,21 +1,23 @@
-# Frontend — `ifrn-editorial-portal` (Fase 1)
+# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1)
 
 Frontend em Vue 3 + TypeScript + Vite (ver
 [ADR-0008](../docs/decisions/0008-frontend-vue-3.md)), publicado como
 build estático (compatível com GitHub Pages).
 
-Escopo desta fase: [docs/phase-1-plan.md](../docs/phase-1-plan.md). Contrato
-completo da API consumida: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
+Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md) e
+[docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md). Contrato completo da
+API consumida: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Estrutura
 
 ```text
 frontend/
 ├── src/
-│   ├── components/    # componentes reutilizáveis (ex.: StatusMessage)
+│   ├── components/    # StatusMessage, FrontMatterPanel, DocumentViewer (Tiptap)
 │   ├── composables/   # useSession, useSampleDocument
 │   ├── services/      # apiClient, authService, documentService
-│   ├── types/          # tipos compartilhados (espelham a API)
+│   ├── lib/             # markdownToTiptap (parser controlado, Fase 2.1)
+│   ├── types/          # tipos compartilhados (espelham a API) e tiptap.ts
 │   ├── views/           # HomeView, LoginView, UnauthorizedView
 │   ├── router/           # rotas e guarda de navegação por sessão
 │   ├── App.vue
@@ -26,6 +28,18 @@ frontend/
 ├── vite.config.ts        # inclui configuração do Vitest
 └── eslint.config.mjs
 ```
+
+## Renderização do documento (Fase 2.1)
+
+`HomeView.vue` converte `document.body` (Markdown) em um documento Tiptap
+via `markdownToTiptap` (`src/lib/markdownToTiptap.ts`, baseado em
+`markdown-it`) e renderiza em `DocumentViewer.vue` com `editable: false`
+— edição é Fase 2.2. `document.front_matter` (já parseado pelo backend)
+é exibido separadamente em `FrontMatterPanel.vue`, também somente
+leitura. Ver [ADR-0009](../docs/decisions/0009-conversao-markdown-tiptap-e-front-matter.md)
+para a estratégia de conversão e as limitações conhecidas do parser
+(escopo mínimo de nós, fallback seguro para Markdown/HTML fora desse
+escopo).
 
 ## Configuração
 
