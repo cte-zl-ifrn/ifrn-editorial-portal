@@ -114,6 +114,12 @@ Quando qualquer uma dessas questões for resolvida, registre a decisão como
 uma nova ADR em [docs/decisions/](decisions/) em vez de apenas atualizar
 este documento.
 
+## Sobre SECURITY.md e .github/dependabot.yml
+
+Antes da implantação de qualquer backend ou configuração de GitHub App em ambiente real, SECURITY.md e 
+.github/dependabot.yml deverão ser revisados e configurados.
+
+
 ## Referências
 
 - [README.md](../README.md)

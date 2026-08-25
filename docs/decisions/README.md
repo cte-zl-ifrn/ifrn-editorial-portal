@@ -62,3 +62,33 @@ Links para o documento de arquitetura ou outras ADRs relacionadas.
 Para o panorama completo do produto e da arquitetura, veja
 [docs/initial-architecture.md](../initial-architecture.md) e
 [docs/project-context.md](../project-context.md).
+
+## Como foi estruturado
+
+As 10 decisões iniciais foram agrupadas em 7 ADRs. O agrupamento foi feito para manter juntas decisões que formam uma única unidade arquitetural ou operacional.
+
+| ID   | Decisão                          | ADR     |
+| ---- | -------------------------------- | ------- |
+| D-01 | Separação portal/conteúdo        | ADR-001 |
+| D-02 | Repositório único de conteúdo    | ADR-001 |
+| D-03 | Escopo restrito ao central-ajuda | ADR-001 |
+| D-04 | Editor Tiptap                    | ADR-002 |
+| D-05 | Markdown e front matter          | ADR-003 |
+| D-06 | GitHub App                       | ADR-004 |
+| D-07 | AWS Lambda e API Gateway         | ADR-005 |
+| D-08 | Branch por alteração             | ADR-006 |
+| D-09 | Pull Request obrigatório         | ADR-006 |
+| D-10 | Assets globais                   | ADR-007 |
+
+## Matriz decisão–risco–validação
+
+| Decisão        | Risco associado                     | Validação futura                |
+| -------------- | ----------------------------------- | ------------------------------- |
+| Tiptap         | Conversão imperfeita para Markdown  | Testes de round-trip            |
+| GitHub App     | Permissões excessivas               | Teste em repositório controlado |
+| Lambda         | Complexidade de autenticação e CORS | Spike técnico                   |
+| Branch + PR    | Conflitos de edição                 | Teste de concorrência           |
+| Assets globais | Colisões e referências inválidas    | Validador de caminhos           |
+
+
+
