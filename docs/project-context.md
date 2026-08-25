@@ -6,13 +6,14 @@ são conhecidos e quais perguntas ainda não têm resposta. Ele não substitui o
 documento de arquitetura — serve como ponto de entrada rápido antes de
 consultar os detalhes.
 
-> Estado atual: **Fase 1 concluída e validada manualmente (Fase 1.5)** —
-> spike do caminho crítico de leitura (login → sessão → autorização →
-> GitHub App → leitura de um documento Markdown), sem edição, upload,
-> branch, commit ou Pull Request. Ver [docs/phase-1-plan.md](phase-1-plan.md)
-> para escopo e critérios de aceite, e
+> Estado atual: **Fase 1 concluída e validada manualmente (Fase 1.5)**;
+> **Fase 2 (edição) em planejamento**, dividida em Fase 2.1 (carregamento e
+> renderização no Tiptap) e Fase 2.2 (edição e serialização de volta para
+> Markdown) — ainda sem escrita real no `central-ajuda`. Ver
+> [docs/phase-1-plan.md](phase-1-plan.md) e
 > [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
-> para o relatório da validação manual contra o GitHub real (2026-08-25).
+> para a Fase 1, e [docs/phase-2-plan.md](phase-2-plan.md) para o plano da
+> Fase 2.
 
 ## Visão geral
 
@@ -52,6 +53,7 @@ Detalhes em [ADR-0001](decisions/0001-separacao-portal-e-repositorio-de-conteudo
 | 9 | Sem push direto na `main` | [0006](decisions/0006-fluxo-branch-e-pull-request.md) |
 | 10 | Imagens em `assets/images`, arquivos em `assets/files` | [0007](decisions/0007-organizacao-de-assets.md) |
 | 11 | Frontend em Vue 3, TypeScript e Vite | [0008](decisions/0008-frontend-vue-3.md) |
+| 12 | Front matter preservado como texto bruto; parsing Markdown→Tiptap com parser controlado; serializer Tiptap→Markdown próprio | [0009](decisions/0009-conversao-markdown-tiptap-e-front-matter.md) |
 
 O índice completo, com contexto e consequências de cada decisão, está em
 [docs/decisions/README.md](decisions/README.md).
@@ -138,6 +140,9 @@ produção (contato institucional definitivo, políticas de retenção etc.).
 - [docs/definition-of-done.md](definition-of-done.md)
 - [docs/phase-1-plan.md](phase-1-plan.md)
 - [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
+- [docs/phase-2-plan.md](phase-2-plan.md)
+- [docs/phase-2.1-plan.md](phase-2.1-plan.md)
+- [docs/phase-2.2-plan.md](phase-2.2-plan.md)
 - [docs/requirements/functional-requirements.md](requirements/functional-requirements.md)
 - [docs/requirements/non-functional-requirements.md](requirements/non-functional-requirements.md)
 - [docs/requirements/user-stories.md](requirements/user-stories.md)

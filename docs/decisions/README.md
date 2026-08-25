@@ -49,6 +49,7 @@ Links para o documento de arquitetura ou outras ADRs relacionadas.
 | [0006](0006-fluxo-branch-e-pull-request.md) | Toda alteração via branch própria e Pull Request, sem push direto na main | Aceita |
 | [0007](0007-organizacao-de-assets.md) | Organização de assets em `assets/images` e `assets/files` | Aceita |
 | [0008](0008-frontend-vue-3.md) | Frontend em Vue 3, TypeScript e Vite | Aceita |
+| [0009](0009-conversao-markdown-tiptap-e-front-matter.md) | Conversão Markdown ↔ Tiptap e preservação do front matter na Fase 2 | Aceita |
 
 ## Como propor uma nova ADR
 
