@@ -91,6 +91,3 @@ As 10 decisões iniciais foram agrupadas em 7 ADRs. O agrupamento foi feito para
 | Lambda         | Complexidade de autenticação e CORS | Spike técnico                   |
 | Branch + PR    | Conflitos de edição                 | Teste de concorrência           |
 | Assets globais | Colisões e referências inválidas    | Validador de caminhos           |
-
-
-

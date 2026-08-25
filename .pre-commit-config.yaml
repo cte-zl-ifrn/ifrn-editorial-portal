@@ -1,0 +1,81 @@
+# Pre-commit — verificações locais antes de cada commit.
+#
+# Instalação (uma vez por checkout):
+#   pip install pre-commit   # ou: uv tool install pre-commit / pipx install pre-commit
+#   pre-commit install
+#
+# Os hooks de backend/frontend pressupõem que as dependências de
+# desenvolvimento já foram instaladas localmente (ver backend/README.md e
+# frontend/README.md) — o pre-commit não gerencia esses ambientes, apenas
+# invoca as ferramentas já instaladas (ruff, pytest, eslint, vitest).
+#
+# Rodar manualmente em todos os arquivos: pre-commit run --all-files
+
+default_language_version:
+  python: python3.12
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-yaml
+        exclude: ^infra/sam/template\.yaml$ # tags !Ref/!Sub — não é YAML puro
+      - id: check-json
+        exclude: ^frontend/tsconfig.*\.json$ # tsconfig usa JSONC (comentários), não JSON estrito
+      - id: check-case-conflict
+      - id: detect-private-key
+        exclude: ^backend/\.env\.example$ # contém um exemplo ilustrativo de formato, não uma chave real
+
+  - repo: local
+    hooks:
+      - id: no-committed-env-files
+        name: bloquear .env real versionado
+        language: fail
+        entry: >-
+          Arquivo .env real não deve ser versionado — use .env.example
+          como template (ver docs/definition-of-done.md).
+        files: '(^|/)\.env$|(^|/)\.env\.(?!example$|sample$|template$)[^/]+$'
+
+      - id: backend-ruff
+        name: backend · ruff check
+        language: system
+        # Usa o binário da venv local (ver backend/README.md) em vez de
+        # depender do PATH do shell que invoca o hook.
+        entry: bash -c 'cd backend && .venv/bin/ruff check src tests'
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: backend-pytest
+        name: backend · pytest
+        language: system
+        entry: bash -c 'cd backend && .venv/bin/pytest -q'
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: frontend-eslint
+        name: frontend · eslint
+        language: system
+        entry: bash -c 'cd frontend && npm run --silent lint'
+        files: ^frontend/(src|tests)/.*\.(vue|ts|tsx)$
+        pass_filenames: false
+
+      - id: frontend-type-check
+        name: frontend · vue-tsc
+        language: system
+        entry: bash -c 'cd frontend && npm run --silent type-check'
+        files: ^frontend/(src|tests)/.*\.(vue|ts|tsx)$
+        pass_filenames: false
+
+      - id: frontend-test
+        name: frontend · vitest
+        language: system
+        entry: bash -c 'cd frontend && npm run --silent test'
+        files: ^frontend/(src|tests)/.*\.(vue|ts|tsx)$
+        pass_filenames: false
