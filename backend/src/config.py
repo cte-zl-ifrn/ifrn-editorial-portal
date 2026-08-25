@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -47,6 +47,22 @@ class Settings(BaseSettings):
     # GitHub API.
     github_api_base_url: str = "https://api.github.com"
     github_oauth_base_url: str = "https://github.com"
+
+    @field_validator("github_app_private_key")
+    @classmethod
+    def _normalize_private_key(cls, value: str) -> str:
+        """Aceita a chave colada em uma única linha com `\\n` literais
+        (comum ao copiar de um .pem para uma variável de ambiente) além do
+        PEM multilinha padrão. Sem isso, o PyJWT falha ao interpretar o PEM
+        porque os `\\n` nunca viram quebras de linha reais."""
+        if not value:
+            return value
+        normalized = value.strip()
+        if normalized[0] in "'\"" and normalized[-1] == normalized[0]:
+            normalized = normalized[1:-1]
+        if "\\n" in normalized and "\n" not in normalized:
+            normalized = normalized.replace("\\n", "\n")
+        return normalized.strip() + "\n"
 
 
 @lru_cache
