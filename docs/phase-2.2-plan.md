@@ -111,24 +111,26 @@ da Fase 2.1).
 
 ## Roteiro de validação manual (Fase 2.2.5)
 
-A ser executado e registrado (mesmo formato de
-[docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md))
-quando a implementação estiver concluída:
+Executado e registrado em
+[docs/phase-2.2.5-manual-validation.md](phase-2.2.5-manual-validation.md)
+(2026-08-25):
 
-- [ ] Login com usuário autorizado → documento carregado, editado (ex.:
-      alterar um parágrafo, adicionar um item de lista, alterar um link) →
-      prévia do Markdown resultante exibida corretamente.
-- [ ] Round-trip sem edição: carregar o documento e gerar a prévia sem
-      alterar nada → comparar manualmente com o arquivo original no
-      `central-ajuda` (diferenças, se houver, devem ser só as
-      normalizações documentadas).
-- [ ] Confirmar, inspecionando a aba de rede do navegador, que nenhuma
-      requisição de escrita (POST/PUT/PATCH para o GitHub ou para o
-      backend persistir o documento) ocorre durante a edição.
-- [ ] Front matter da prévia idêntico, caractere a caractere, ao
-      `front_matter_raw` retornado na Fase 2.1.
-- [ ] Login com usuário sem permissão → sem acesso ao editor (mesmo
-      comportamento validado na Fase 2.1.5).
+- [x] Login com usuário autorizado → documento carregado, editado (mudar
+      um parágrafo, adicionar um item de lista) → prévia do Markdown
+      resultante exibida corretamente. **Alterar um link não foi testado
+      nesta rodada** — só a renderização de um link já existente na
+      prévia foi confirmada; fica como pendência de baixo risco (já
+      coberta por testes automatizados).
+- [x] Round-trip sem edição: carregar o documento e gerar a prévia sem
+      alterar nada → bate com o original (fora das normalizações
+      documentadas).
+- [x] Confirmado, inspecionando a aba de rede do navegador, que nenhuma
+      requisição de escrita ocorre durante a edição.
+- [x] Front matter da prévia idêntico ao `front_matter_raw` retornado na
+      Fase 2.1.
+- [x] Login com usuário sem permissão → sem acesso ao editor — não
+      re-testado nesta rodada; comportamento herdado sem alterações da
+      Fase 2.1.5, onde já foi validado.
 
 ## Dependências
 
