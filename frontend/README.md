@@ -1,11 +1,12 @@
-# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1)
+# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 2.2)
 
 Frontend em Vue 3 + TypeScript + Vite (ver
 [ADR-0008](../docs/decisions/0008-frontend-vue-3.md)), publicado como
 build estático (compatível com GitHub Pages).
 
-Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md) e
-[docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md). Contrato completo da
+Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
+[docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md) e
+[docs/phase-2.2-plan.md](../docs/phase-2.2-plan.md). Contrato completo da
 API consumida: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Estrutura
@@ -16,7 +17,7 @@ frontend/
 │   ├── components/    # StatusMessage, FrontMatterPanel, DocumentViewer (Tiptap)
 │   ├── composables/   # useSession, useSampleDocument
 │   ├── services/      # apiClient, authService, documentService
-│   ├── lib/             # markdownToTiptap (parser controlado, Fase 2.1)
+│   ├── lib/             # markdownToTiptap, tiptapToMarkdown, tiptapExtensions
 │   ├── types/          # tipos compartilhados (espelham a API) e tiptap.ts
 │   ├── views/           # HomeView, LoginView, UnauthorizedView
 │   ├── router/           # rotas e guarda de navegação por sessão
@@ -29,17 +30,31 @@ frontend/
 └── eslint.config.mjs
 ```
 
-## Renderização do documento (Fase 2.1)
+## Edição do documento (Fase 2.1 + Fase 2.2)
 
 `HomeView.vue` converte `document.body` (Markdown) em um documento Tiptap
 via `markdownToTiptap` (`src/lib/markdownToTiptap.ts`, baseado em
-`markdown-it`) e renderiza em `DocumentViewer.vue` com `editable: false`
-— edição é Fase 2.2. `document.front_matter` (já parseado pelo backend)
-é exibido separadamente em `FrontMatterPanel.vue`, também somente
-leitura. Ver [ADR-0009](../docs/decisions/0009-conversao-markdown-tiptap-e-front-matter.md)
-para a estratégia de conversão e as limitações conhecidas do parser
-(escopo mínimo de nós, fallback seguro para Markdown/HTML fora desse
-escopo).
+`markdown-it`) e renderiza em `DocumentViewer.vue`, que agora é editável
+(`editable`), com uma toolbar mínima (negrito, itálico, H1–H3, listas,
+link, imagem). A cada alteração, `DocumentViewer` emite o documento Tiptap
+atual (`update:content`); `HomeView.vue` serializa esse documento de volta
+para Markdown com `tiptapToMarkdown` (`src/lib/tiptapToMarkdown.ts`,
+serializer próprio, não delegado a uma lib genérica) e exibe a prévia do
+resultado (`document.front_matter_raw` + corpo serializado) — **nada é
+enviado ao backend ou ao GitHub**; a prévia é só client-side, para
+inspeção manual (Fase 2.2.5).
+
+`document.front_matter` (já parseado pelo backend) continua somente
+leitura em `FrontMatterPanel.vue` — front matter não é editável nesta
+fase. A superfície de edição do Tiptap é restrita em
+`src/lib/tiptapExtensions.ts` ao mesmo whitelist de nós do parser
+(desabilita blockquote, codeBlock, strike e underline do StarterKit), para
+que o editor nunca produza um nó que o serializer não saiba serializar.
+
+Ver [ADR-0009](../docs/decisions/0009-conversao-markdown-tiptap-e-front-matter.md)
+para a estratégia completa de conversão, preservação do front matter e as
+limitações conhecidas (normalizações cosmética documentadas no cabeçalho
+de `tiptapToMarkdown.ts`).
 
 ## Configuração
 

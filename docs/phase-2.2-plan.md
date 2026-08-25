@@ -52,22 +52,43 @@ Markdown, recombinando com o front matter original preservado
 4. Suite de fixtures de round-trip (arquivo(s) de teste com exemplos reais
    de Markdown do `central-ajuda`, cobrindo o escopo de nós da Fase 2.1).
 
+**Entregue** (nomes de arquivo reais): `frontend/src/lib/tiptapToMarkdown.ts`
+(serializer + `UnsupportedNodeError`); `frontend/src/lib/tiptapExtensions.ts`
+(configuração do StarterKit restrita ao whitelist, compartilhada entre
+leitura e edição); `frontend/src/components/DocumentViewer.vue` estendido
+com prop `editable`, toolbar e emissão de `update:content`;
+`frontend/src/views/HomeView.vue` com a seção de prévia;
+`frontend/tests/{tiptapToMarkdown,roundtrip}.spec.ts` e
+`frontend/tests/fixtures/realDocuments.ts` (compartilhada com os testes
+da Fase 2.1).
+
 ## Critérios de aceite / definição de pronto
 
-- [ ] O corpo do documento é editável no Tiptap (negrito, itálico,
-      títulos, listas, links, imagens).
-- [ ] Serializar o documento editado produz Markdown válido para todos os
-      tipos de nó do escopo.
-- [ ] Round-trip sem edição (carregar → serializar sem alterar nada)
-      reproduz o `body` original ou uma normalização documentada e estável
-      (sem perda de conteúdo ou formatação).
-- [ ] O documento final para prévia é `front_matter_raw` (inalterado) +
-      `body` serializado — nunca uma reserialização do front matter.
-- [ ] Nenhuma requisição de escrita é enviada ao backend ou ao GitHub em
-      nenhum momento do fluxo de edição.
-- [ ] Testes automatizados cobrem o serializer por tipo de nó e pelo menos
-      3 fixtures de round-trip com documentos reais.
-- [ ] `ruff check`, `pytest`, `eslint`, `vue-tsc` e `vitest` passam.
+- [x] O corpo do documento é editável no Tiptap (negrito, itálico,
+      títulos H1–H3, listas, links, imagens), com toolbar mínima
+      (`DocumentViewer.vue`).
+- [x] Serializar o documento editado produz Markdown válido para todos os
+      tipos de nó do escopo (`tiptapToMarkdown.ts`, 15 testes por tipo de nó).
+- [x] Round-trip sem edição (carregar → serializar sem alterar nada)
+      reproduz uma árvore Tiptap semanticamente idêntica à original ao
+      reanalisar o Markdown serializado — normalização documentada e
+      estável (itálico sempre `*...*`; softbreak e hardbreak colapsam no
+      mesmo nó `hardBreak`, serializado como `\` + nova linha), sem perda
+      de conteúdo ou estrutura.
+- [x] O documento final para prévia (`HomeView.vue`) é `front_matter_raw`
+      (inalterado) + `body` serializado — nunca uma reserialização do
+      front matter.
+- [x] Nenhuma requisição de escrita é enviada ao backend ou ao GitHub em
+      nenhum momento do fluxo de edição (a prévia é só client-side).
+- [x] Testes automatizados cobrem o serializer por tipo de nó (15) e
+      round-trip contra os 3 documentos reais do `central-ajuda` já
+      usados na Fase 2.1, mais um documento sintético cobrindo todo o
+      escopo mínimo (`tests/roundtrip.spec.ts`, 4 testes). Componente:
+      edição habilitada, toolbar visível, emissão do documento atual
+      (`update:content`) e aplicação de negrito via toolbar
+      (`DocumentViewer.spec.ts`).
+- [x] `ruff check`, `pytest` (31), `eslint`, `vue-tsc` e `vitest` (60)
+      passam; `npm run build` gera bundle de produção sem erro.
 
 ## Riscos técnicos e decisões de arquitetura
 
@@ -114,13 +135,29 @@ quando a implementação estiver concluída:
 - Fase 2.1 concluída e validada (parser Markdown → Tiptap, separação de
   front matter, documento(s) de referência definidos).
 
-## Decisões em aberto (específicas da Fase 2.2)
+## Decisões tomadas durante a implementação
 
-- Nível de normalização cosmética aceitável no round-trip (ex.: estilo de
-  marcador de lista, aspas) — a decidir durante a implementação e
-  documentar no próprio serializer (comentário + teste), não como ADR
-  separada a menos que se mostre uma decisão controversa.
-- Se a prévia do Markdown deve ficar visível permanentemente na interface
-  desta fase ou ser um recurso temporário de depuração para a validação
-  manual — não afeta o backend nem o contrato de API, pode ser decidido
-  livremente durante a implementação do frontend.
+- Normalização cosmética do round-trip, documentada no cabeçalho de
+  `tiptapToMarkdown.ts`: itálico sempre serializa como `*...*` (nunca
+  `_..._`, mesmo que o original usasse underscore); quebras de linha
+  suaves e forçadas colapsam no mesmo nó `hardBreak` (já era assim desde
+  a Fase 2.1) e serializam de volta como `\` + nova linha. Nenhuma perde
+  conteúdo — apenas normalizam a sintaxe de superfície de forma estável.
+  Verificado com testes de round-trip semântico (reanalisar o Markdown
+  serializado reproduz a mesma árvore Tiptap), não comparação byte-a-byte.
+- Colchetes (`[`/`]`) não são escapados no texto simples, mesmo sendo
+  tecnicamente "significativos" em Markdown — escapá-los sempre
+  distorceria visualmente conteúdo comum como checklists em texto puro
+  (`[x] Tarefa`), presente em documentos reais do `central-ajuda`, e um
+  `[texto]` isolado sem `(` logo depois não é interpretado como link pelo
+  CommonMark de qualquer forma.
+- A prévia (`front_matter_raw + body serializado`) ficou permanentemente
+  visível em `HomeView.vue`, como uma seção própria — mais simples do que
+  um recurso de depuração escondido, e útil diretamente para a validação
+  manual da Fase 2.2.5.
+- A superfície de edição do Tiptap foi restringida (`tiptapExtensions.ts`)
+  para desabilitar blockquote, codeBlock, strike e underline do
+  StarterKit — nós fora do whitelist que o serializer não sabe
+  serializar. Isso evita que o usuário crie, sem querer, um documento que
+  o `UnsupportedNodeError` do serializer rejeitaria; o erro tratado
+  continua como defesa em profundidade, não como mecanismo primário.

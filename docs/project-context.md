@@ -7,11 +7,11 @@ documento de arquitetura — serve como ponto de entrada rápido antes de
 consultar os detalhes.
 
 > Estado atual: **Fase 1 e Fase 2.1 concluídas e validadas manualmente**
-> (Fase 1.5 e Fase 2.1.5) — carregamento do documento com front matter
-> separado do corpo e renderização somente leitura no Tiptap já
-> funcionando de ponta a ponta. **Fase 2.2** (edição e serialização de
-> volta para Markdown) ainda não iniciada — em nenhum momento há escrita
-> real no `central-ajuda`. Ver [docs/phase-1-plan.md](phase-1-plan.md) e
+> (Fase 1.5 e Fase 2.1.5); **Fase 2.2 implementada** (edição no Tiptap +
+> serializer próprio de volta para Markdown, com prévia local), pendente
+> de validação manual (Fase 2.2.5) — em nenhum momento há escrita real no
+> `central-ajuda`, nem nesta fase nem nas anteriores. Ver
+> [docs/phase-1-plan.md](phase-1-plan.md) e
 > [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
 > para a Fase 1, e [docs/phase-2-plan.md](phase-2-plan.md) para o plano da
 > Fase 2.
