@@ -1,0 +1,110 @@
+# Backend — `ifrn-editorial-portal` (Fase 1)
+
+Backend em Python (FastAPI), pensado para rodar em AWS Lambda por trás de
+um API Gateway HTTP API (ver
+[ADR-0005](../docs/decisions/0005-backend-lambda-api-gateway.md)), mas
+executável localmente com `uvicorn` sem qualquer dependência de AWS.
+
+Escopo desta fase: [docs/phase-1-plan.md](../docs/phase-1-plan.md). Contrato
+completo da API: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
+
+## Por que FastAPI
+
+`docs/initial-architecture.md` (seção 6.2) já previa "Python com FastAPI
+adaptado para Lambda" como uma opção válida. Foi a escolhida por oferecer,
+sem introduzir Django: tipagem com Pydantic, testes diretos via
+`TestClient`, documentação automática e um adaptador maduro para Lambda
+(`mangum`).
+
+## Estrutura
+
+```text
+backend/
+├── src/
+│   ├── handlers/    # rotas FastAPI (health, auth, me, documents)
+│   ├── services/    # orquestração (login, autorização, leitura de documento)
+│   ├── github/      # cliente da API do GitHub e autenticação da GitHub App
+│   ├── auth/         # sessão e state OAuth (cookies assinados)
+│   ├── models/       # esquemas de resposta (Pydantic)
+│   ├── config.py     # configuração via variáveis de ambiente
+│   ├── logging.py    # logging estruturado com correlation_id
+│   ├── errors.py      # erros de domínio → status HTTP
+│   ├── dependencies.py # dependências do FastAPI (sessão, cliente HTTP)
+│   ├── app.py         # criação da aplicação FastAPI
+│   └── lambda_handler.py # adaptador Mangum para AWS Lambda
+└── tests/
+```
+
+## Configuração
+
+Copie `.env.example` para `.env` e preencha os valores (nunca versione
+`.env`):
+
+```bash
+cp .env.example .env
+```
+
+`GITHUB_OWNER`, `GITHUB_REPOSITORY` e `GITHUB_BASE_BRANCH` são constantes
+do projeto — o backend rejeita qualquer tentativa de sobrescrevê-los via
+parâmetro de requisição (RF-21). Não altere esses valores para apontar a
+outro repositório sem uma nova ADR.
+
+Para testar o fluxo real de ponta a ponta (fora dos testes automatizados),
+você precisa de:
+
+1. Uma **OAuth App** do GitHub (não confundir com a GitHub App) com
+   callback `http://localhost:8000/auth/callback`, para autenticação da
+   pessoa usuária.
+2. Uma **GitHub App** instalada em `cte-zl-ifrn/central-ajuda`, com
+   permissões `Contents: Read-only` e `Metadata: Read-only` (ver
+   [ADR-0004](../docs/decisions/0004-integracao-github-app.md) e a nota de
+   escopo em `docs/phase-1-plan.md`), com sua chave privada em
+   `GITHUB_APP_PRIVATE_KEY`.
+
+Sem essas credenciais reais, os testes automatizados continuam funcionando
+normalmente (ver seção "Testes").
+
+## Executando localmente
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+uvicorn src.app:app --reload --port 8000
+```
+
+`GET http://localhost:8000/health` deve responder `{"status": "ok"}` sem
+qualquer configuração adicional.
+
+## Testes
+
+```bash
+source .venv/bin/activate
+pytest
+ruff check src tests
+```
+
+Toda chamada à API do GitHub é isolada com `respx` (mock de `httpx`) — os
+testes não fazem chamadas de rede nem exigem credenciais reais (RNF-18).
+Sessões são criadas diretamente com `create_session_cookie_value` nos
+testes que não precisam validar o fluxo OAuth completo.
+
+## Sessão e segredos
+
+- A sessão do portal é um cookie assinado (`itsdangerous`), sem
+  armazenamento em banco — coerente com a decisão de MVP sem banco de
+  dados (ADR-0005). O cookie contém a identidade e o resultado da
+  verificação de autorização, nunca um token do GitHub.
+- O `state` do OAuth usa o mesmo mecanismo, com expiração curta, para
+  proteção contra CSRF sem exigir armazenamento server-side.
+- `SESSION_SECRET`, `GITHUB_OAUTH_CLIENT_SECRET` e `GITHUB_APP_PRIVATE_KEY`
+  são segredos: apenas variáveis de ambiente em desenvolvimento; em
+  produção, AWS Secrets Manager (ver ADR-0005). Nunca aparecem em logs
+  (ver `src/logging.py`, que filtra campos sensíveis por nome).
+
+## Lambda
+
+`src/lambda_handler.py` expõe `handler`, compatível com o handler de uma
+função Lambda atrás de um API Gateway HTTP API. Ver
+[infra/README.md](../infra/README.md) para o template SAM correspondente.
+Esta fase não implanta nenhum recurso AWS real.

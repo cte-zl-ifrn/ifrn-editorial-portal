@@ -1,0 +1,6 @@
+{
+  "Stage": "development",
+  "FrontendUrl": "http://localhost:5173",
+  "GithubOauthClientId": "PREENCHER_COM_CLIENT_ID_DE_DESENVOLVIMENTO",
+  "SecretsManagerSecretArn": "arn:aws:secretsmanager:REGIAO:CONTA:secret:PREENCHER"
+}

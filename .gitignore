@@ -216,3 +216,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node / frontend (Vue 3 + Vite — ver ADR-0008)
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.tsbuildinfo
+.vite/
+.env
+.env.local
+.env.*.local
+
+# AWS SAM (infra/) — artefatos de build/implantação, nunca segredos versionados
+.aws-sam/
+samconfig.toml

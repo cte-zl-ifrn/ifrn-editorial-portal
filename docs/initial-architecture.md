@@ -199,7 +199,9 @@ Responsabilidades:
 
 ### 6.1 Frontend
 
-O frontend será uma aplicação estática publicada no GitHub Pages. Ele deverá:
+O frontend será uma aplicação estática publicada no GitHub Pages, construída
+com Vue 3, TypeScript e Vite (ver [ADR-0008](decisions/0008-frontend-vue-3.md)).
+Ele deverá:
 
 - apresentar o login;
 - exibir a identidade do usuário;
@@ -576,6 +578,7 @@ Referência gerada:
 Endpoints sugeridos:
 
 ```text
+GET  /health
 GET  /auth/login
 GET  /auth/callback
 POST /auth/logout
@@ -957,7 +960,6 @@ O MVP será considerado funcional quando um usuário autorizado conseguir:
 
 As decisões abaixo ainda devem ser confirmadas:
 
-- framework do frontend;
 - framework ou estilo de implementação do backend Python;
 - método exato de autenticação da GitHub App;
 - uso de OAuth com PKCE ou fluxo de instalação associado à aplicação;

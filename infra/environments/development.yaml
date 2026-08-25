@@ -1,0 +1,14 @@
+# Configuração conceitual do ambiente de desenvolvimento.
+# Não consumido automaticamente por nenhuma ferramenta nesta fase — é
+# documentação legível por humanos, complementar a
+# infra/sam/parameters/development.json.
+
+stage: development
+frontend_url: http://localhost:5173
+backend_url: http://localhost:8000
+cookie_secure: false
+cookie_samesite: lax
+notes: >
+  Ambiente local de desenvolvimento. Nenhum recurso AWS é provisionado
+  nesta fase; backend e frontend rodam localmente (ver backend/README.md
+  e frontend/README.md).
