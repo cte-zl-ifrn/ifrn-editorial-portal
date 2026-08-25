@@ -6,11 +6,13 @@ são conhecidos e quais perguntas ainda não têm resposta. Ele não substitui o
 documento de arquitetura — serve como ponto de entrada rápido antes de
 consultar os detalhes.
 
-> Estado atual: **Fase 1 em desenvolvimento** — spike do caminho crítico de
-> leitura (login → sessão → autorização → GitHub App → leitura de um
-> documento Markdown), sem edição, upload, branch, commit ou Pull Request.
-> Ver [docs/phase-1-plan.md](phase-1-plan.md) para escopo, critérios de
-> aceite e limitações detalhadas.
+> Estado atual: **Fase 1 concluída e validada manualmente (Fase 1.5)** —
+> spike do caminho crítico de leitura (login → sessão → autorização →
+> GitHub App → leitura de um documento Markdown), sem edição, upload,
+> branch, commit ou Pull Request. Ver [docs/phase-1-plan.md](phase-1-plan.md)
+> para escopo e critérios de aceite, e
+> [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
+> para o relatório da validação manual contra o GitHub real (2026-08-25).
 
 ## Visão geral
 
@@ -128,13 +130,14 @@ produção (contato institucional definitivo, políticas de retenção etc.).
 ## Referências
 
 - [README.md](../README.md)
-- [SECURITY.md](../SECURITY.md) — ainda no template padrão, pendente de
-  preenchimento com o processo real de reporte de vulnerabilidades.
+- [SECURITY.md](../SECURITY.md) — canal de reporte de vulnerabilidades e
+  superfície de segurança da Fase 1.
 - [docs/initial-architecture.md](initial-architecture.md)
 - [docs/decisions/README.md](decisions/README.md)
 - [docs/glossary.md](glossary.md)
 - [docs/definition-of-done.md](definition-of-done.md)
 - [docs/phase-1-plan.md](phase-1-plan.md)
+- [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
 - [docs/requirements/functional-requirements.md](requirements/functional-requirements.md)
 - [docs/requirements/non-functional-requirements.md](requirements/non-functional-requirements.md)
 - [docs/requirements/user-stories.md](requirements/user-stories.md)
