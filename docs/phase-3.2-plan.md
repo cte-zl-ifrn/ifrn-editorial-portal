@@ -132,16 +132,57 @@ A ser executado e registrado (mesmo formato de
 quando a implementação estiver concluída — mesma ressalva da Fase 3.1.5
 sobre confirmação antes de testar contra o `central-ajuda` real:
 
-- [ ] Inserir uma imagem real (arquivo local) no Tiptap, enviar, e
+- [x] Inserir uma imagem real (arquivo local) no Tiptap, enviar, e
       confirmar que ela aparece no Pull Request em
       `assets/images/{categoria}/`, referenciada corretamente no
-      Markdown do documento.
-- [ ] Tentar enviar um arquivo de tipo não permitido (ex.: `.exe`) →
-      rejeitado antes de qualquer gravação.
-- [ ] Tentar um nome de arquivo com `../` → rejeitado ou normalizado,
-      nunca gravado fora de `assets/images/`.
+      Markdown do documento. Confirmado em
+      [cte-zl-ifrn/central-ajuda#2](https://github.com/cte-zl-ifrn/central-ajuda/pull/2):
+      duas imagens inseridas na mesma edição, cada uma gravada com nome
+      próprio (`assets/images/proitec/como-fazer-cursos-c44065ad.png` e
+      `...-c15bda0f.png`) e referenciada corretamente no Markdown
+      (`![alt](../../assets/images/proitec/...)`).
+- [ ] Tentar selecionar um arquivo de tipo não permitido (ex.: `.exe`) →
+      rejeitado **imediatamente na seleção**, no frontend, sem sequer
+      criar uma prévia. Reescrito após um achado da validação manual: a
+      validação original só existia no backend (`assinatura do arquivo`,
+      `422`); o `accept` do `<input type="file">` é só uma dica de UI, e
+      o sistema operacional permitiu escolher um `.exe` mesmo assim — o
+      frontend o inseria como imagem quebrada (não renderiza, mas também
+      não avisava nada) em vez de rejeitar. Corrigido em `setImage`
+      (`DocumentViewer.vue`), que agora confere `file.type` contra
+      `ACCEPTED_IMAGE_MIME_TYPES` antes de prosseguir. Reabrir para
+      reteste após a correção.
+- [x] Tentar um nome de arquivo com `../` → **não aplicável via UI**,
+      por desenho: o frontend gera o próprio nome do arquivo
+      (`{slug}-{id}.{ext}`, ver `pendingAssets.ts`), não existe campo
+      onde um nome malicioso possa ser digitado. A proteção equivalente
+      já é validada automaticamente em
+      `backend/tests/test_asset_validation.py` (18 casos, incluindo
+      `../../etc/passwd.png`, `/etc/passwd.png`, `..\windows\...` etc.) —
+      coberto por teste automatizado, não por passo manual.
 - [ ] Fechar (sem merge) o(s) Pull Request(s) de teste, ou obter
-      confirmação do mantenedor institucional antes de merge.
+      confirmação do mantenedor institucional antes de merge — pendente
+      para [cte-zl-ifrn/central-ajuda#2](https://github.com/cte-zl-ifrn/central-ajuda/pull/2).
+
+### Achado adicional (fora do roteiro original): imagem não aparece ao reabrir o documento
+
+Ao reabrir para edição o documento já submetido em
+[central-ajuda#2](https://github.com/cte-zl-ifrn/central-ajuda/pull/2), a
+imagem não é exibida. Causa identificada: o Markdown gravado usa caminho
+relativo ao próprio arquivo (`../../assets/images/...`), que o GitHub
+resolve corretamente (por isso a imagem aparece no PR), mas que o
+navegador, ao renderizar o Tiptap no portal, resolve relativo à própria
+origem do portal — não ao `central-ajuda` — resultando em imagem
+quebrada. `central-ajuda` é público (`main` como branch padrão,
+confirmado via API), então uma correção possível é reescrever, só para
+exibição, o `src` relativo para
+`https://raw.githubusercontent.com/cte-zl-ifrn/central-ajuda/main/{caminho-resolvido}`
+no parser (`markdownToTiptap.ts`), revertendo para o caminho relativo
+original no serializer (`tiptapToMarkdown.ts`) antes de gravar — mantendo
+o que é commitado idêntico ao que já funciona hoje. **Correção ainda não
+implementada** — decisão pendente de confirmação antes de implementar,
+já que toca o contrato de conversão da
+[ADR-0009](decisions/0009-conversao-markdown-tiptap-e-front-matter.md).
 
 ## Dependências
 

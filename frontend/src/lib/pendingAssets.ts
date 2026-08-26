@@ -28,6 +28,10 @@ const MIME_TO_EXTENSION: Record<string, string> = {
   'image/webp': 'webp',
 }
 
+/** Única fonte de verdade dos tipos aceitos — usada tanto pelo seletor de
+ * arquivo (`DocumentViewer.vue`) quanto pela resolução abaixo. */
+export const ACCEPTED_IMAGE_MIME_TYPES = Object.keys(MIME_TO_EXTENSION)
+
 const DATA_URL_PATTERN = /^data:([^;]+);base64,(.+)$/
 
 export function computeDocumentSlug(documentPath: string): string {
@@ -68,7 +72,15 @@ export function resolvePendingAssets(
       const match = DATA_URL_PATTERN.exec(node.attrs.src)
       if (match) {
         const [, mime, base64] = match
-        const extension = MIME_TO_EXTENSION[mime] ?? 'png'
+        const extension = MIME_TO_EXTENSION[mime]
+        if (!extension) {
+          // Invariante: só chega aqui uma `data:` URL criada por
+          // `setImage` (DocumentViewer.vue), que já rejeita tipos fora de
+          // ACCEPTED_IMAGE_MIME_TYPES antes de gerar a `data:` URL. Um
+          // mime não mapeado aqui indica que essa garantia foi violada —
+          // falhar alto em vez de rotular silenciosamente como `.png`.
+          throw new Error(`Tipo de imagem não suportado: ${mime}`)
+        }
         const filename = `${slug}-${generateAssetId()}.${extension}`
         const alt = typeof node.attrs.alt === 'string' ? node.attrs.alt : ''
         assets.push({ kind: 'image', filename, content: base64, alt })

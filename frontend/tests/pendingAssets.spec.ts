@@ -113,4 +113,21 @@ describe('resolvePendingAssets', () => {
 
     vi.unstubAllGlobals()
   })
+
+  it('throws instead of silently defaulting the extension for an unrecognized mime type', () => {
+    // Não deveria ser alcançável via `DocumentViewer.vue` (que já rejeita
+    // tipos fora da whitelist antes de gerar a `data:` URL), mas o guard
+    // aqui precisa falhar alto, nunca rotular como `.png` em silêncio.
+    const doc: TiptapDocument = {
+      type: 'doc',
+      content: [
+        {
+          type: 'image',
+          attrs: { src: 'data:application/x-msdownload;base64,TVo=', alt: 'Não é imagem' },
+        },
+      ],
+    }
+
+    expect(() => resolvePendingAssets(doc, DOCUMENT_PATH)).toThrow(/Tipo de imagem não suportado/)
+  })
 })

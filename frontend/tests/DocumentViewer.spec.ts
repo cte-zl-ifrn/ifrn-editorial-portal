@@ -129,4 +129,46 @@ describe('DocumentViewer', () => {
     promptSpy.mockRestore()
     createElementSpy.mockRestore()
   })
+
+  it('rejects a file whose real type is not an accepted image, even if its name looks like one', async () => {
+    const wrapper = mount(DocumentViewer, {
+      props: { markdown: 'Texto.', editable: true },
+    })
+    await nextTick()
+    await nextTick()
+
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    const promptSpy = vi.spyOn(window, 'prompt')
+
+    const originalCreateElement = document.createElement.bind(document)
+    let capturedInput: HTMLInputElement | undefined
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string) => {
+        const element = originalCreateElement(tagName)
+        if (tagName === 'input') capturedInput = element as HTMLInputElement
+        return element
+      })
+
+    const imageButton = wrapper.findAll('button').find((button) => button.text() === 'Imagem')
+    await imageButton!.trigger('click')
+
+    // O sistema operacional pode permitir escolher qualquer arquivo
+    // mesmo com `accept` restrito no input — simula um `.exe` disfarçado
+    // de imagem (nome termina em `.png`, mas `file.type` é outro).
+    const file = new File(['MZ...'], 'programa.png', { type: 'application/x-msdownload' })
+    Object.defineProperty(capturedInput, 'files', { value: [file], configurable: true })
+    capturedInput?.dispatchEvent(new Event('change'))
+    await nextTick()
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Tipo de arquivo não suportado. Envie uma imagem PNG, JPEG, GIF ou WebP.',
+    )
+    expect(promptSpy).not.toHaveBeenCalled()
+    expect(wrapper.find('img').exists()).toBe(false)
+
+    alertSpy.mockRestore()
+    promptSpy.mockRestore()
+    createElementSpy.mockRestore()
+  })
 })

@@ -2,6 +2,7 @@
 import { watch } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { markdownToTiptap } from '../lib/markdownToTiptap'
+import { ACCEPTED_IMAGE_MIME_TYPES } from '../lib/pendingAssets'
 import { tiptapExtensions } from '../lib/tiptapExtensions'
 import type { TiptapDocument } from '../types/tiptap'
 
@@ -73,14 +74,24 @@ function setLink(): void {
  * extrai o conteúdo para envio como asset só no momento da prévia/envio
  * (ver HomeView.vue) — este componente não precisa saber nada sobre
  * caminhos de asset ou submissão.
+ *
+ * O atributo `accept` do input é só uma dica de UI — o sistema
+ * operacional pode permitir escolher qualquer arquivo mesmo assim (ex.:
+ * opção "todos os arquivos" no seletor). Por isso o `file.type` real é
+ * conferido aqui antes de prosseguir; o backend também valida (assinatura
+ * do arquivo, não só o tipo declarado) antes de gravar qualquer coisa.
  */
 function setImage(): void {
   const input = document.createElement('input')
   input.type = 'file'
-  input.accept = 'image/png,image/jpeg,image/gif,image/webp'
+  input.accept = ACCEPTED_IMAGE_MIME_TYPES.join(',')
   input.addEventListener('change', () => {
     const file = input.files?.[0]
     if (!file) return
+    if (!ACCEPTED_IMAGE_MIME_TYPES.includes(file.type)) {
+      window.alert('Tipo de arquivo não suportado. Envie uma imagem PNG, JPEG, GIF ou WebP.')
+      return
+    }
     const alt = window.prompt('Texto alternativo (obrigatório para acessibilidade):')
     if (!alt) return
     const reader = new FileReader()
