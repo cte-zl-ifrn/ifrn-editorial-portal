@@ -89,7 +89,14 @@ jobs:
             exit 1
           fi
 
-          if git grep -nIE 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- . ':(exclude).github/workflows/ci.yml'; then
+          # backend/.env.example traz, em comentário, um exemplo ilustrativo
+          # do formato aceito para GITHUB_APP_PRIVATE_KEY (ver
+          # src/config.py) — não é uma chave real. Excluído aqui pelo
+          # mesmo motivo que já é excluído do hook detect-private-key no
+          # .pre-commit-config.yaml.
+          if git grep -nIE 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- . \
+              ':(exclude).github/workflows/ci.yml' \
+              ':(exclude)backend/.env.example'; then
             echo "Conteúdo compatível com chave privada encontrado no repositório."
             exit 1
           fi
