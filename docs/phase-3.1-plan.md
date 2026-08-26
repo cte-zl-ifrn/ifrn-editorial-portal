@@ -138,28 +138,26 @@ idempotência. Riscos específicos desta sub-fase:
 
 ## Roteiro de validação manual (Fase 3.1.5)
 
-A ser executado e registrado (mesmo formato de
-[docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md))
-quando a implementação estiver concluída — **requer confirmação explícita
-antes de testar contra o `central-ajuda` real**:
+Executado e registrado em
+[docs/phase-3.1.5-manual-validation.md](phase-3.1.5-manual-validation.md)
+(2026-08-26):
 
-- [ ] Login com usuário autorizado → editar o documento → enviar → PR
-      real criado no `central-ajuda`, com corpo, autor e checklist
-      corretos.
-- [ ] Conflito: alterar o arquivo diretamente no GitHub entre o
+- [x] Login com usuário autorizado → editar o documento → enviar → PR
+      real criado no `central-ajuda`
+      ([#1](https://github.com/cte-zl-ifrn/central-ajuda/pull/1)), com
+      corpo, autor e checklist corretos.
+- [x] Conflito: alterar o arquivo diretamente no GitHub entre o
       carregamento e o envio → submissão rejeitada com erro de conflito,
       nenhum branch/commit/PR criado.
-- [ ] Usuário sem permissão → tentativa de envio rejeitada, sem criar
+- [x] Usuário sem permissão → tentativa de envio rejeitada, sem criar
       nada no `central-ajuda`.
-- [ ] Inspeção do Pull Request criado confirma que nenhuma permissão
+- [x] Inspeção do Pull Request criado confirma que nenhuma permissão
       além de `Contents` e `Pull requests` foi necessária.
-- [ ] Um dos Pull Requests de teste é revisado e **mergeado de verdade**
-      no `central-ajuda` — autorizado explicitamente pelo mantenedor
-      (issue #12) para esta validação, em vez de apenas fechado sem
-      merge. Confirmar, após o merge, que o site publicado reflete a
-      alteração e que nada além do arquivo esperado foi modificado.
-      Qualquer Pull Request de teste adicional que não for aproveitado
-      deve ser fechado sem merge.
+- [x] Um dos Pull Requests de teste foi revisado e **mergeado de
+      verdade** no `central-ajuda` — autorizado explicitamente pelo
+      mantenedor (issue #12). Confirmado, via API, que o conteúdo em
+      `main` reflete exatamente a edição feita e que nada além do
+      arquivo esperado foi modificado.
 
 ## Dependências
 

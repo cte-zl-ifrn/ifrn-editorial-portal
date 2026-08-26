@@ -6,13 +6,12 @@ são conhecidos e quais perguntas ainda não têm resposta. Ele não substitui o
 documento de arquitetura — serve como ponto de entrada rápido antes de
 consultar os detalhes.
 
-> Estado atual: **Fase 1, Fase 2.1 e Fase 2.2 concluídas e validadas
-> manualmente** (Fase 1.5, Fase 2.1.5, Fase 2.2.5). **Fase 3.1 implementada**
-> (endpoint `POST /api/submissions`: branch, commit via Contents API e
-> Pull Request reais, com revalidação de conflito), pendente de validação
-> manual (Fase 3.1.5) — a GitHub App já foi atualizada para permissões de
-> escrita (`Contents: Read and write`, `Pull requests: Read and write`).
-> **Fase 3.2** (assets) ainda não iniciada. Ver
+> Estado atual: **Fase 1, Fase 2.1, Fase 2.2 e Fase 3.1 concluídas e
+> validadas manualmente** (Fase 1.5, Fase 2.1.5, Fase 2.2.5, Fase 3.1.5) —
+> o portal já escreveu de verdade no `central-ajuda` pela primeira vez:
+> [cte-zl-ifrn/central-ajuda#1](https://github.com/cte-zl-ifrn/central-ajuda/pull/1),
+> criado via branch + Pull Request pelo backend e mergeado. **Fase 3.2**
+> (assets) ainda não iniciada. Ver
 > [docs/phase-1-plan.md](phase-1-plan.md) e
 > [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
 > para a Fase 1, [docs/phase-2-plan.md](phase-2-plan.md) para a Fase 2, e
@@ -151,6 +150,7 @@ produção (contato institucional definitivo, políticas de retenção etc.).
 - [docs/phase-2.2.5-manual-validation.md](phase-2.2.5-manual-validation.md)
 - [docs/phase-3-plan.md](phase-3-plan.md)
 - [docs/phase-3.1-plan.md](phase-3.1-plan.md)
+- [docs/phase-3.1.5-manual-validation.md](phase-3.1.5-manual-validation.md)
 - [docs/phase-3.2-plan.md](phase-3.2-plan.md)
 - [docs/requirements/functional-requirements.md](requirements/functional-requirements.md)
 - [docs/requirements/non-functional-requirements.md](requirements/non-functional-requirements.md)
