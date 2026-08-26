@@ -9,12 +9,14 @@ consultar os detalhes.
 > Estado atual: **Fase 1, Fase 2.1 e Fase 2.2 concluídas e validadas
 > manualmente** (Fase 1.5, Fase 2.1.5, Fase 2.2.5) — carregamento,
 > renderização, edição no Tiptap e serialização de volta para Markdown já
-> funcionando de ponta a ponta, com prévia local. Em nenhum momento há
-> escrita real no `central-ajuda`; isso é Fase 3 (branch + Pull Request),
-> ainda não iniciada. Ver [docs/phase-1-plan.md](phase-1-plan.md) e
+> funcionando de ponta a ponta, com prévia local. **Fase 3 (escrita via
+> branch + Pull Request) em planejamento**, dividida em Fase 3.1
+> (documento, sem assets) e Fase 3.2 (assets) — nenhuma escrita real
+> ocorreu ainda no `central-ajuda`. Ver
+> [docs/phase-1-plan.md](phase-1-plan.md) e
 > [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
-> para a Fase 1, e [docs/phase-2-plan.md](phase-2-plan.md) para o plano da
-> Fase 2.
+> para a Fase 1, [docs/phase-2-plan.md](phase-2-plan.md) para a Fase 2, e
+> [docs/phase-3-plan.md](phase-3-plan.md) para o plano da Fase 3.
 
 ## Visão geral
 
@@ -56,6 +58,7 @@ Detalhes em [ADR-0001](decisions/0001-separacao-portal-e-repositorio-de-conteudo
 | 11 | Frontend em Vue 3, TypeScript e Vite | [0008](decisions/0008-frontend-vue-3.md) |
 | 12 | Front matter preservado como texto bruto; parsing Markdown→Tiptap com parser controlado; serializer Tiptap→Markdown próprio | [0009](decisions/0009-conversao-markdown-tiptap-e-front-matter.md) |
 | 13 | Backend implementado com FastAPI (não Django) | [0010](decisions/0010-backend-fastapi.md) |
+| 14 | Gravação via Contents API (não Git Data API); conflito revalidado antes de gravar; front matter sempre relido, nunca confiado ao cliente; idempotência best-effort | [0011](decisions/0011-escrita-branch-commit-pull-request.md) |
 
 O índice completo, com contexto e consequências de cada decisão, está em
 [docs/decisions/README.md](decisions/README.md).
@@ -146,6 +149,9 @@ produção (contato institucional definitivo, políticas de retenção etc.).
 - [docs/phase-2.1.5-manual-validation.md](phase-2.1.5-manual-validation.md)
 - [docs/phase-2.2-plan.md](phase-2.2-plan.md)
 - [docs/phase-2.2.5-manual-validation.md](phase-2.2.5-manual-validation.md)
+- [docs/phase-3-plan.md](phase-3-plan.md)
+- [docs/phase-3.1-plan.md](phase-3.1-plan.md)
+- [docs/phase-3.2-plan.md](phase-3.2-plan.md)
 - [docs/requirements/functional-requirements.md](requirements/functional-requirements.md)
 - [docs/requirements/non-functional-requirements.md](requirements/non-functional-requirements.md)
 - [docs/requirements/user-stories.md](requirements/user-stories.md)
