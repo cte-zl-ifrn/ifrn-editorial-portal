@@ -45,10 +45,14 @@ Globals:
         GITHUB_OAUTH_CLIENT_ID: !Ref GithubOauthClientId
         COOKIE_SECURE: !If [IsProduction, "true", "false"]
         COOKIE_SAMESITE: !If [IsProduction, "none", "lax"]
-        # Demais segredos (GITHUB_OAUTH_CLIENT_SECRET, GITHUB_APP_ID,
-        # GITHUB_APP_PRIVATE_KEY, SESSION_SECRET) são injetados a partir de
-        # SecretsManagerSecretArn no momento da implantação real — nunca
-        # como valor literal neste template.
+        # O ARN em si não é sensível (só aponta para o segredo — ver
+        # ADR-0012); os valores sensíveis de dentro dele
+        # (GITHUB_OAUTH_CLIENT_SECRET, GITHUB_APP_ID,
+        # GITHUB_APP_PRIVATE_KEY, SESSION_SECRET) nunca aparecem como
+        # valor literal neste template. `get_settings()`
+        # (backend/src/config.py) busca esse segredo uma única vez por
+        # cold start quando esta variável está presente.
+        SECRETS_MANAGER_SECRET_ARN: !Ref SecretsManagerSecretArn
 
 Resources:
   PortalApi:

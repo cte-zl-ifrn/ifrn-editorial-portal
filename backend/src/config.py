@@ -7,10 +7,27 @@ docs/requirements/functional-requirements.md (RF-21).
 
 from __future__ import annotations
 
+import json
+import os
 from functools import lru_cache
 
+import boto3
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Nome da variável de ambiente com o ARN do segredo do Secrets Manager
+# (ver ADR-0012). Só definida em produção (injetada pelo template SAM);
+# ausente em desenvolvimento local, onde `.env` continua sendo a fonte.
+SECRETS_MANAGER_SECRET_ARN_ENV_VAR = "SECRETS_MANAGER_SECRET_ARN"
+
+# Chaves do segredo único no Secrets Manager, mapeadas para os campos
+# correspondentes de `Settings` (ADR-0012).
+_SECRETS_MANAGER_KEY_MAP = {
+    "GITHUB_OAUTH_CLIENT_SECRET": "github_oauth_client_secret",
+    "GITHUB_APP_ID": "github_app_id",
+    "GITHUB_APP_PRIVATE_KEY": "github_app_private_key",
+    "SESSION_SECRET": "session_secret",
+}
 
 
 class Settings(BaseSettings):
@@ -72,6 +89,22 @@ class Settings(BaseSettings):
         return normalized.strip() + "\n"
 
 
+def _load_secrets_manager_overrides(secret_arn: str) -> dict[str, str]:
+    """Busca o segredo único do Secrets Manager (ADR-0012) e retorna os
+    valores a sobrescrever em `Settings`. Deliberadamente não captura
+    exceções: uma falha aqui deve interromper a inicialização (nunca cair
+    silenciosamente nos valores padrão inseguros de `Settings`)."""
+    client = boto3.client("secretsmanager")
+    response = client.get_secret_value(SecretId=secret_arn)
+    secret = json.loads(response["SecretString"])
+    return {
+        field_name: secret[secret_key]
+        for secret_key, field_name in _SECRETS_MANAGER_KEY_MAP.items()
+    }
+
+
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    secret_arn = os.environ.get(SECRETS_MANAGER_SECRET_ARN_ENV_VAR)
+    overrides = _load_secrets_manager_overrides(secret_arn) if secret_arn else {}
+    return Settings(**overrides)

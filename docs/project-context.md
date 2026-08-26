@@ -19,11 +19,13 @@ consultar os detalhes.
 > caminho relativo — ver [ADR-0007](decisions/0007-organizacao-de-assets.md)),
 > decisão tomada depois de um achado real na validação manual (caminho
 > relativo divergia entre a visualização do GitHub e o site publicado
-> pelo Jekyll). **Fase 4 (segurança e operação) em planejamento**: divisão
-> em seis sub-fases proposta em [docs/phase-4-plan.md](phase-4-plan.md),
-> aguardando aprovação antes de iniciar a implementação (ver
+> pelo Jekyll). **Fase 4 (segurança e operação) em andamento**: dividida
+> em seis sub-fases em [docs/phase-4-plan.md](phase-4-plan.md) (ver
 > [issue #13](https://github.com/cte-zl-ifrn/ifrn-editorial-portal/issues/13)).
-> Ver [docs/phase-1-plan.md](phase-1-plan.md) e
+> **Fase 4.1 (segredos via AWS Secrets Manager) implementada** — ver
+> [docs/phase-4.1-plan.md](phase-4.1-plan.md); pendente apenas de uma
+> implantação real (fora do escopo de qualquer fase até aqui). Ver
+> [docs/phase-1-plan.md](phase-1-plan.md) e
 > [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
 > para a Fase 1, [docs/phase-2-plan.md](phase-2-plan.md) para a Fase 2,
 > [docs/phase-3-plan.md](phase-3-plan.md) para a Fase 3, e

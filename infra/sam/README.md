@@ -1,9 +1,12 @@
-# Template SAM — Fase 1
+# Template SAM — Fase 1 / Fase 4.1
 
 `template.yaml` descreve a infraestrutura mínima prevista em
 [ADR-0005](../../docs/decisions/0005-backend-lambda-api-gateway.md):
 um API Gateway HTTP API na frente de uma função Lambda que executa o
-backend (`backend/src/lambda_handler.py`).
+backend (`backend/src/lambda_handler.py`). Desde a Fase 4.1, a função
+também recebe o ARN do segredo do Secrets Manager como variável de
+ambiente (`SECRETS_MANAGER_SECRET_ARN`) — ver
+[ADR-0012](../../docs/decisions/0012-segredos-secrets-manager.md).
 
 **Este template não foi implantado.** Nesta fase, ele serve como
 documentação executável da infraestrutura-alvo e pode ser validado
@@ -13,7 +16,16 @@ localmente com o AWS SAM CLI, sem provisionar nenhum recurso real.
 
 - Não cria o segredo do Secrets Manager — apenas referencia um ARN
   existente (`SecretsManagerSecretArn`), que deve ser criado e populado
-  fora deste template, por processo institucional próprio.
+  fora deste template, por processo institucional próprio. O segredo
+  deve ser um único JSON com as quatro chaves
+  `GITHUB_OAUTH_CLIENT_SECRET`, `GITHUB_APP_ID`,
+  `GITHUB_APP_PRIVATE_KEY` e `SESSION_SECRET` (ver
+  [ADR-0012](../../docs/decisions/0012-segredos-secrets-manager.md)) —
+  o backend (`get_settings()`, `backend/src/config.py`) busca esse
+  segredo uma única vez por cold start quando
+  `SECRETS_MANAGER_SECRET_ARN` está presente no ambiente; sem essa
+  variável (desenvolvimento local), o comportamento continua sendo
+  `.env`.
 - Não implanta o frontend (isso é responsabilidade do GitHub Pages/CI do
   frontend, fora do escopo desta fase).
 - Não configura domínio customizado, WAF, DynamoDB, S3 ou qualquer serviço

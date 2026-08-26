@@ -1,4 +1,4 @@
-# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1 / Fase 3.2)
+# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1 / Fase 3.2 / Fase 4.1)
 
 Backend em Python (FastAPI), pensado para rodar em AWS Lambda por trás de
 um API Gateway HTTP API (ver
@@ -7,8 +7,9 @@ executável localmente com `uvicorn` sem qualquer dependência de AWS.
 
 Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
 [docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md),
-[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md) e
-[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md). Contrato completo da
+[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md),
+[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md) e
+[docs/phase-4.1-plan.md](../docs/phase-4.1-plan.md). Contrato completo da
 API: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Por que FastAPI
@@ -104,10 +105,19 @@ testes que não precisam validar o fluxo OAuth completo.
   verificação de autorização, nunca um token do GitHub.
 - O `state` do OAuth usa o mesmo mecanismo, com expiração curta, para
   proteção contra CSRF sem exigir armazenamento server-side.
-- `SESSION_SECRET`, `GITHUB_OAUTH_CLIENT_SECRET` e `GITHUB_APP_PRIVATE_KEY`
-  são segredos: apenas variáveis de ambiente em desenvolvimento; em
-  produção, AWS Secrets Manager (ver ADR-0005). Nunca aparecem em logs
-  (ver `src/logging.py`, que filtra campos sensíveis por nome).
+- `SESSION_SECRET`, `GITHUB_OAUTH_CLIENT_SECRET`, `GITHUB_APP_ID` e
+  `GITHUB_APP_PRIVATE_KEY` são segredos: em desenvolvimento, variáveis
+  de ambiente (`.env`); em produção, um único segredo JSON no AWS
+  Secrets Manager (Fase 4.1, ver
+  [ADR-0012](../docs/decisions/0012-segredos-secrets-manager.md)) —
+  `get_settings()` (`src/config.py`) busca esse segredo uma única vez
+  por cold start quando a variável de ambiente
+  `SECRETS_MANAGER_SECRET_ARN` está presente (injetada pelo template
+  SAM); sem essa variável, o comportamento continua sendo `.env`, sem
+  qualquer mudança. Uma falha ao buscar o segredo, quando a variável
+  está presente, interrompe a inicialização — nunca cai silenciosamente
+  nos valores padrão inseguros. Nenhum segredo aparece em logs (ver
+  `src/logging.py`, que filtra campos sensíveis por nome).
 
 ## Escrita no central-ajuda (Fase 3.1 / Fase 3.2)
 

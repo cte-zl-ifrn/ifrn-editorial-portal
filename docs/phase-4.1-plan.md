@@ -57,21 +57,39 @@ hoje).
 5. `docs/decisions/0012-segredos-secrets-manager.md` (ver
    [ADR-0012](decisions/0012-segredos-secrets-manager.md)).
 
+**Entregue** (nomes reais): `backend/src/config.py` —
+`SECRETS_MANAGER_SECRET_ARN_ENV_VAR`, `_SECRETS_MANAGER_KEY_MAP`,
+`_load_secrets_manager_overrides()`, `get_settings()` estendido;
+`backend/requirements.txt` e `backend/pyproject.toml` (`boto3`);
+`infra/sam/template.yaml` (`SECRETS_MANAGER_SECRET_ARN` exposta em
+`Globals.Function.Environment.Variables`); `backend/tests/test_config.py`
+(4 testes novos); `backend/README.md` e `infra/sam/README.md`
+atualizados.
+
 ## Critérios de aceite / definição de pronto
 
-- [ ] Com a variável do ARN presente (mockada), `get_settings()`
+- [x] Com a variável do ARN presente (mockada), `get_settings()`
       resolve os quatro valores sensíveis a partir do segredo, não do
-      ambiente.
-- [ ] Sem a variável do ARN, o comportamento é idêntico ao atual
-      (nenhuma regressão nas fases anteriores).
-- [ ] Falha ao buscar o segredo, com a variável presente, interrompe a
+      ambiente
+      (`test_get_settings_loads_overrides_from_secrets_manager_when_arn_is_present`).
+- [x] Sem a variável do ARN, o comportamento é idêntico ao atual —
+      nenhuma regressão nas fases anteriores
+      (`test_get_settings_uses_env_when_secrets_manager_arn_is_absent`;
+      os 62 testes das fases anteriores continuam passando).
+- [x] Falha ao buscar o segredo, com a variável presente, interrompe a
       inicialização com um erro claro — nunca um valor padrão
-      inseguro em produção.
-- [ ] Nenhum valor do segredo aparece em log, mesmo em caso de erro.
-- [ ] `ruff check` e `pytest` passam; nenhuma regressão nos testes
-      existentes.
-- [ ] `sam validate --template infra/sam/template.yaml` continua
-      válido com a nova variável de ambiente.
+      inseguro em produção (`test_get_settings_fails_loudly_when_secrets_manager_fetch_fails`,
+      `test_get_settings_fails_loudly_when_secret_payload_is_missing_a_key`;
+      `_load_secrets_manager_overrides` não captura nenhuma exceção).
+- [x] Nenhum valor do segredo aparece em log — nenhum caminho do novo
+      código faz log; `_SENSITIVE_KEYS` (`backend/src/logging.py`) já
+      cobria os nomes relevantes e não precisou de alteração.
+- [x] `ruff check` e `pytest` passam; nenhuma regressão nos testes
+      existentes (66 testes no total no backend, 4 novos).
+- [x] `sam validate --template infra/sam/template.yaml` continua
+      válido com a nova variável de ambiente — validado estruturalmente
+      via parser YAML com tags do CloudFormation (AWS SAM CLI não
+      disponível neste ambiente de desenvolvimento).
 
 ## Riscos técnicos e decisões de arquitetura
 
@@ -86,18 +104,50 @@ falha fatal em vez de fallback silencioso).
 - **Custo**: `GetSecretValue` tem custo por chamada; com cache por
   instância, o volume é desprezível para o tráfego esperado do MVP.
 
+## Decisões tomadas durante a implementação
+
+- O ambiente de desenvolvimento deste worktree não tinha `pip` nem
+  `boto3` instalados no `.venv` já existente — foi necessário
+  `python -m ensurepip` antes de instalar as dependências. Não é uma
+  decisão de arquitetura, só uma nota operacional para quem for
+  reproduzir localmente.
+- O AWS SAM CLI não está disponível neste ambiente — a validação do
+  template foi feita por um parser YAML com constructor genérico para
+  as tags curtas do CloudFormation (`!Ref`, `!If`, `!Sub`, `!GetAtt`,
+  `!Equals`), suficiente para garantir que a estrutura do documento
+  está correta, mas não substitui `sam validate` de verdade. Recomendo
+  rodar `sam validate --template infra/sam/template.yaml` antes de
+  qualquer implantação real.
+- `_load_secrets_manager_overrides` propositalmente **não** captura
+  nenhuma exceção (nem de rede, nem de parsing do JSON, nem de chave
+  ausente no payload) — qualquer falha sobe direto e interrompe
+  `create_app()` na importação do módulo (`backend/src/app.py`), que já
+  falha imediatamente hoje. Reaproveita esse comportamento existente em
+  vez de introduzir um novo.
+
 ## Roteiro de validação manual (Fase 4.1.5)
 
-A ser executado e registrado quando a implementação estiver concluída,
-no mesmo formato das validações anteriores:
-
-- [ ] Rodar o backend localmente sem a variável do ARN → comportamento
-      idêntico ao atual.
-- [ ] Rodar os testes automatizados com o segredo mockado → valores
-      aplicados corretamente.
-- [ ] Confirmar, por leitura de código (não por implantação real, que
-      está fora do escopo), que nenhum caminho de erro loga o payload
-      do segredo.
+- [x] Rodar o backend localmente sem a variável do ARN → comportamento
+      idêntico ao atual. Confirmado diretamente:
+      `get_settings()` sem `SECRETS_MANAGER_SECRET_ARN` retorna
+      `session_secret` a partir do valor padrão de sempre
+      (`dev-only-insecure-secret...`), sem tocar `boto3`.
+- [x] Rodar os testes automatizados com o segredo mockado → valores
+      aplicados corretamente. Confirmado via `pytest` (4 testes novos em
+      `test_config.py`) e também manualmente fora dos testes, com um
+      `boto3.client` mockado retornando um segredo JSON completo —
+      `session_secret` refletiu o valor do segredo, não do ambiente.
+- [x] Confirmar, por leitura de código, que nenhum caminho de erro loga
+      o payload do segredo — `_load_secrets_manager_overrides` não
+      contém nenhuma chamada de log; qualquer falha sobe como exceção
+      não tratada.
+- [ ] **Pendente do mantenedor** (fora do que pode ser verificado sem
+      credenciais reais): revisar a variável
+      `SECRETS_MANAGER_SECRET_ARN` exposta em
+      `infra/sam/template.yaml` e, quando decidir avançar para uma
+      implantação real, confirmar com `sam validate`/`sam deploy` de
+      verdade — fora do escopo desta fase (ver
+      [docs/phase-4-plan.md](phase-4-plan.md)).
 
 ## Dependências
 
