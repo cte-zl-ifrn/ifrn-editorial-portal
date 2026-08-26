@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  computeAssetPathPrefix,
+  computeAssetUrl,
   computeCategory,
   computeDocumentSlug,
   resolvePendingAssets,
@@ -21,9 +21,11 @@ describe('computeCategory', () => {
   })
 })
 
-describe('computeAssetPathPrefix', () => {
-  it('computes a relative prefix matching the document depth', () => {
-    expect(computeAssetPathPrefix(DOCUMENT_PATH)).toBe('../../assets/images/proitec/')
+describe('computeAssetUrl', () => {
+  it('builds an absolute raw.githubusercontent.com URL, not a relative path', () => {
+    expect(computeAssetUrl(DOCUMENT_PATH, 'como-fazer-cursos-a1b2c3d4.png')).toBe(
+      'https://raw.githubusercontent.com/cte-zl-ifrn/central-ajuda/main/assets/images/proitec/como-fazer-cursos-a1b2c3d4.png',
+    )
   })
 })
 
@@ -54,7 +56,7 @@ describe('resolvePendingAssets', () => {
     expect(result.assets).toEqual([])
   })
 
-  it('replaces a data: URL image with the final relative path and extracts the asset', () => {
+  it('replaces a data: URL image with the final absolute GitHub URL and extracts the asset', () => {
     vi.stubGlobal('crypto', { randomUUID: () => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' })
 
     const base64Content = 'iVBORw0KGgo='
@@ -71,9 +73,7 @@ describe('resolvePendingAssets', () => {
     const result = resolvePendingAssets(doc, DOCUMENT_PATH)
 
     const expectedFilename = 'como-fazer-cursos-aaaaaaaa.png'
-    expect(result.doc.content[0].attrs?.src).toBe(
-      `../../assets/images/proitec/${expectedFilename}`,
-    )
+    expect(result.doc.content[0].attrs?.src).toBe(computeAssetUrl(DOCUMENT_PATH, expectedFilename))
     expect(result.assets).toEqual([
       { kind: 'image', filename: expectedFilename, content: base64Content, alt: 'Tela de login' },
     ])
@@ -107,7 +107,9 @@ describe('resolvePendingAssets', () => {
     const result = resolvePendingAssets(doc, DOCUMENT_PATH)
 
     const image = result.doc.content[0].content?.[0].content?.[0]
-    expect(image?.attrs?.src).toBe('../../assets/images/proitec/como-fazer-cursos-11111111.jpg')
+    expect(image?.attrs?.src).toBe(
+      computeAssetUrl(DOCUMENT_PATH, 'como-fazer-cursos-11111111.jpg'),
+    )
     expect(result.assets).toHaveLength(1)
     expect(result.assets[0].filename).toBe('como-fazer-cursos-11111111.jpg')
 

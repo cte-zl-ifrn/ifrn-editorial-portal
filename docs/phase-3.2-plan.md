@@ -141,7 +141,7 @@ sobre confirmação antes de testar contra o `central-ajuda` real:
       próprio (`assets/images/proitec/como-fazer-cursos-c44065ad.png` e
       `...-c15bda0f.png`) e referenciada corretamente no Markdown
       (`![alt](../../assets/images/proitec/...)`).
-- [ ] Tentar selecionar um arquivo de tipo não permitido (ex.: `.exe`) →
+- [x] Tentar selecionar um arquivo de tipo não permitido (ex.: `.exe`) →
       rejeitado **imediatamente na seleção**, no frontend, sem sequer
       criar uma prévia. Reescrito após um achado da validação manual: a
       validação original só existia no backend (`assinatura do arquivo`,
@@ -150,8 +150,8 @@ sobre confirmação antes de testar contra o `central-ajuda` real:
       frontend o inseria como imagem quebrada (não renderiza, mas também
       não avisava nada) em vez de rejeitar. Corrigido em `setImage`
       (`DocumentViewer.vue`), que agora confere `file.type` contra
-      `ACCEPTED_IMAGE_MIME_TYPES` antes de prosseguir. Reabrir para
-      reteste após a correção.
+      `ACCEPTED_IMAGE_MIME_TYPES` antes de prosseguir. Reteste confirmado
+      pelo usuário após a correção.
 - [x] Tentar um nome de arquivo com `../` → **não aplicável via UI**,
       por desenho: o frontend gera o próprio nome do arquivo
       (`{slug}-{id}.{ext}`, ver `pendingAssets.ts`), não existe campo
@@ -164,25 +164,30 @@ sobre confirmação antes de testar contra o `central-ajuda` real:
       confirmação do mantenedor institucional antes de merge — pendente
       para [cte-zl-ifrn/central-ajuda#2](https://github.com/cte-zl-ifrn/central-ajuda/pull/2).
 
-### Achado adicional (fora do roteiro original): imagem não aparece ao reabrir o documento
+### Achado adicional (fora do roteiro original): imagem não aparece ao reabrir o documento — resolvido
 
 Ao reabrir para edição o documento já submetido em
 [central-ajuda#2](https://github.com/cte-zl-ifrn/central-ajuda/pull/2), a
-imagem não é exibida. Causa identificada: o Markdown gravado usa caminho
-relativo ao próprio arquivo (`../../assets/images/...`), que o GitHub
-resolve corretamente (por isso a imagem aparece no PR), mas que o
-navegador, ao renderizar o Tiptap no portal, resolve relativo à própria
-origem do portal — não ao `central-ajuda` — resultando em imagem
-quebrada. `central-ajuda` é público (`main` como branch padrão,
-confirmado via API), então uma correção possível é reescrever, só para
-exibição, o `src` relativo para
-`https://raw.githubusercontent.com/cte-zl-ifrn/central-ajuda/main/{caminho-resolvido}`
-no parser (`markdownToTiptap.ts`), revertendo para o caminho relativo
-original no serializer (`tiptapToMarkdown.ts`) antes de gravar — mantendo
-o que é commitado idêntico ao que já funciona hoje. **Correção ainda não
-implementada** — decisão pendente de confirmação antes de implementar,
-já que toca o contrato de conversão da
-[ADR-0009](decisions/0009-conversao-markdown-tiptap-e-front-matter.md).
+imagem não era exibida. Investigação aprofundada mostrou que a causa não
+era só a origem do portal: o caminho relativo gravado
+(`../../assets/images/...`) é resolvido pelo GitHub a partir do arquivo
+fonte (`_docs/proitec/como-fazer-cursos.md`, 2 níveis), mas pelo site
+publicado pelo Jekyll a partir da URL de saída do `permalink` da
+coleção (`/central-ajuda/docs/docs/proitec/como-fazer-cursos/`, 4
+níveis) — as duas profundidades divergem, então nenhum caminho relativo
+funciona nos dois lugares ao mesmo tempo (detalhe completo e achado
+correlato do `permalink` duplicado do `central-ajuda` na
+[ADR-0007](decisions/0007-organizacao-de-assets.md)).
+
+**Corrigido**: a referência gravada agora é uma URL absoluta do GitHub
+(`https://raw.githubusercontent.com/cte-zl-ifrn/central-ajuda/main/assets/images/{categoria}/{arquivo}`),
+calculada em `computeAssetUrl` (`frontend/src/lib/pendingAssets.ts`),
+que substituiu o cálculo de caminho relativo por profundidade
+(`computeAssetPathPrefix`, removido). Resolve o problema original (a
+mesma URL funciona ao reabrir o documento no portal) sem depender da
+estrutura de permalinks do `central-ajuda` — ver ADR-0007 para o
+trade-off aceito (a URL só resolve depois do merge do Pull Request, já
+que aponta para `main`).
 
 ## Dependências
 

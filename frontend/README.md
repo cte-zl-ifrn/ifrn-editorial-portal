@@ -74,14 +74,25 @@ repositório desde o carregamento; a UI orienta a recarregar a página) e
 erro genérico. Nenhuma escrita adicional é tentada automaticamente.
 
 O botão "Imagem" da toolbar (`DocumentViewer.vue`) abre um seletor de
-arquivo local (não mais uma URL, como na Fase 2.2) e insere a imagem
-como uma `data:` URL para prévia imediata. Só no momento de gerar a
-prévia final ou enviar (`resolvePendingAssets`,
-`src/lib/pendingAssets.ts`) essa `data:` URL é trocada pelo caminho
-relativo definitivo (`../../assets/images/{categoria}/{slug}-{id}.{ext}`,
-calculado a partir do documento fixo) e o conteúdo binário é extraído
-como um asset a enviar junto — o backend valida tudo de novo antes de
-gravar (ver [ADR-0007](../docs/decisions/0007-organizacao-de-assets.md)).
+arquivo local (não mais uma URL, como na Fase 2.2), rejeita
+imediatamente qualquer tipo fora de PNG/JPEG/GIF/WebP (checando
+`file.type`, já que o `accept` do input é só uma dica de UI) e insere a
+imagem aceita como uma `data:` URL para prévia imediata. Só no momento
+de gerar a prévia final ou enviar (`resolvePendingAssets`,
+`src/lib/pendingAssets.ts`) essa `data:` URL é trocada pela **URL
+absoluta** definitiva
+(`https://raw.githubusercontent.com/cte-zl-ifrn/central-ajuda/main/assets/images/{categoria}/{slug}-{id}.{ext}`)
+e o conteúdo binário é extraído como um asset a enviar junto — o
+backend valida tudo de novo antes de gravar (ver
+[ADR-0007](../docs/decisions/0007-organizacao-de-assets.md)). Não é um
+caminho relativo: a profundidade de um caminho relativo depende de onde
+o Jekyll publica a página (`permalink`), que pode divergir da
+profundidade do arquivo fonte no repositório — um caminho relativo
+calculado a partir do arquivo fonte pode funcionar na visualização do
+GitHub e quebrar no site publicado (achado real da Fase 3.2.5). A URL
+absoluta aponta para `main`, então só passa a resolver depois do merge
+do Pull Request — troca deliberada, documentada na ADR-0007.
+
 O mesmo resultado (`resolvedSubmission`, em `HomeView.vue`) alimenta
 tanto a prévia quanto o envio, para que o nome de arquivo mostrado seja
 exatamente o mesmo que é gravado.

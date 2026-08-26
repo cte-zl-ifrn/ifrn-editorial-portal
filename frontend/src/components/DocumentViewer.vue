@@ -70,7 +70,7 @@ function setLink(): void {
  * Upload de arquivo local (Fase 3.2) — não mais uma URL já publicada
  * (comportamento da Fase 2.2). A imagem é inserida como uma `data:` URL
  * para prévia imediata; `resolvePendingAssets`
- * (`src/lib/pendingAssets.ts`) troca isso pelo caminho relativo final e
+ * (`src/lib/pendingAssets.ts`) troca isso pela URL absoluta final e
  * extrai o conteúdo para envio como asset só no momento da prévia/envio
  * (ver HomeView.vue) — este componente não precisa saber nada sobre
  * caminhos de asset ou submissão.

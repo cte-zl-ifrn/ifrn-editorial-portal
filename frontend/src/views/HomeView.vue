@@ -23,9 +23,10 @@ function handleContentUpdate(doc: TiptapDocument): void {
 }
 
 /**
- * Substitui imagens de upload local (data: URL) pelo caminho relativo
- * final e extrai o conteúdo binário como assets pendentes (Fase 3.2, ver
- * ADR-0007) — calculado uma única vez por edição, e reaproveitado tanto
+ * Substitui imagens de upload local (data: URL) pela URL absoluta final
+ * (raw.githubusercontent.com, não caminho relativo — ver ADR-0007) e
+ * extrai o conteúdo binário como assets pendentes (Fase 3.2) —
+ * calculado uma única vez por edição, e reaproveitado tanto
  * na prévia quanto no envio, para que os nomes de arquivo (que incluem um
  * id aleatório) sejam exatamente os mesmos nos dois lugares.
  */
