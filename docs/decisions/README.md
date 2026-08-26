@@ -52,6 +52,10 @@ Links para o documento de arquitetura ou outras ADRs relacionadas.
 | [0009](0009-conversao-markdown-tiptap-e-front-matter.md) | Conversão Markdown ↔ Tiptap e preservação do front matter na Fase 2 | Aceita |
 | [0010](0010-backend-fastapi.md) | Backend implementado com FastAPI (não Django) | Aceita |
 | [0011](0011-escrita-branch-commit-pull-request.md) | Estratégia de escrita no central-ajuda (branch, commit e Pull Request) | Aceita |
+| [0012](0012-segredos-secrets-manager.md) | Segredos de produção via AWS Secrets Manager | Aceita |
+| [0013](0013-rate-limiting-api-gateway.md) | Rate limiting via throttling nativo do API Gateway | Aceita |
+| [0014](0014-csrf-cookies-cross-origin.md) | Mitigação de CSRF para cookies de sessão cross-origin | Aceita |
+| [0015](0015-cicd-implantacao-aprovada.md) | Automação de CI/CD com implantação manual aprovada | Aceita |
 
 ## Como propor uma nova ADR
 

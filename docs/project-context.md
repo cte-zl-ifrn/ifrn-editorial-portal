@@ -19,10 +19,15 @@ consultar os detalhes.
 > caminho relativo — ver [ADR-0007](decisions/0007-organizacao-de-assets.md)),
 > decisão tomada depois de um achado real na validação manual (caminho
 > relativo divergia entre a visualização do GitHub e o site publicado
-> pelo Jekyll). Ver [docs/phase-1-plan.md](phase-1-plan.md) e
+> pelo Jekyll). **Fase 4 (segurança e operação) em planejamento**: divisão
+> em seis sub-fases proposta em [docs/phase-4-plan.md](phase-4-plan.md),
+> aguardando aprovação antes de iniciar a implementação (ver
+> [issue #13](https://github.com/cte-zl-ifrn/ifrn-editorial-portal/issues/13)).
+> Ver [docs/phase-1-plan.md](phase-1-plan.md) e
 > [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
-> para a Fase 1, [docs/phase-2-plan.md](phase-2-plan.md) para a Fase 2, e
-> [docs/phase-3-plan.md](phase-3-plan.md) para a Fase 3.
+> para a Fase 1, [docs/phase-2-plan.md](phase-2-plan.md) para a Fase 2,
+> [docs/phase-3-plan.md](phase-3-plan.md) para a Fase 3, e
+> [docs/phase-4-plan.md](phase-4-plan.md) para a Fase 4.
 
 ## Visão geral
 
@@ -65,6 +70,10 @@ Detalhes em [ADR-0001](decisions/0001-separacao-portal-e-repositorio-de-conteudo
 | 12 | Front matter preservado como texto bruto; parsing Markdown→Tiptap com parser controlado; serializer Tiptap→Markdown próprio | [0009](decisions/0009-conversao-markdown-tiptap-e-front-matter.md) |
 | 13 | Backend implementado com FastAPI (não Django) | [0010](decisions/0010-backend-fastapi.md) |
 | 14 | Gravação via Contents API (não Git Data API); conflito revalidado antes de gravar; front matter sempre relido, nunca confiado ao cliente; idempotência best-effort | [0011](decisions/0011-escrita-branch-commit-pull-request.md) |
+| 15 | Segredos de produção em um único segredo JSON no AWS Secrets Manager, buscado uma vez por cold start | [0012](decisions/0012-segredos-secrets-manager.md) |
+| 16 | Rate limiting via throttling nativo do API Gateway, não um limitador de aplicação com estado compartilhado | [0013](decisions/0013-rate-limiting-api-gateway.md) |
+| 17 | CSRF em requisições autenticadas por cookie cross-origin mitigado por cabeçalho customizado exigido, não por token armazenado | [0014](decisions/0014-csrf-cookies-cross-origin.md) |
+| 18 | Implantação automática em `development`, aprovação humana obrigatória em `production` | [0015](decisions/0015-cicd-implantacao-aprovada.md) |
 
 O índice completo, com contexto e consequências de cada decisão, está em
 [docs/decisions/README.md](decisions/README.md).
@@ -160,6 +169,13 @@ produção (contato institucional definitivo, políticas de retenção etc.).
 - [docs/phase-3.1.5-manual-validation.md](phase-3.1.5-manual-validation.md)
 - [docs/phase-3.2-plan.md](phase-3.2-plan.md)
 - [docs/phase-3.2.5-manual-validation.md](phase-3.2.5-manual-validation.md)
+- [docs/phase-4-plan.md](phase-4-plan.md)
+- [docs/phase-4.1-plan.md](phase-4.1-plan.md)
+- [docs/phase-4.2-plan.md](phase-4.2-plan.md)
+- [docs/phase-4.3-plan.md](phase-4.3-plan.md)
+- [docs/phase-4.4-plan.md](phase-4.4-plan.md)
+- [docs/phase-4.5-plan.md](phase-4.5-plan.md)
+- [docs/phase-4.6-plan.md](phase-4.6-plan.md)
 - [docs/requirements/functional-requirements.md](requirements/functional-requirements.md)
 - [docs/requirements/non-functional-requirements.md](requirements/non-functional-requirements.md)
 - [docs/requirements/user-stories.md](requirements/user-stories.md)
