@@ -1,5 +1,5 @@
 /**
- * Tipos espelham docs/api/openapi.yaml (Fase 1 / Fase 2.1).
+ * Tipos espelham docs/api/openapi.yaml (Fase 1 / Fase 2.1 / Fase 3.1).
  */
 
 export interface GithubUser {
@@ -25,6 +25,28 @@ export interface DocumentResponse {
   front_matter: Record<string, unknown>
   front_matter_raw: string
   body: string
+}
+
+/**
+ * `body` é o Markdown já serializado pelo frontend (sem front matter —
+ * o backend relê o original no momento da gravação, ver ADR-0011).
+ */
+export interface SubmissionRequest {
+  body: string
+  base_sha: string
+  summary: string
+}
+
+export interface PullRequestInfo {
+  number: number
+  html_url: string
+  state: string
+}
+
+export interface SubmissionResponse {
+  submission_id: string
+  branch: string
+  pull_request: PullRequestInfo
 }
 
 export interface ApiErrorBody {

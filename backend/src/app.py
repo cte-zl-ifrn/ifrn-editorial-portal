@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .errors import PortalError
-from .handlers import auth, documents, health, me
+from .handlers import auth, documents, health, me, submissions
 from .logging import (
     configure_logging,
     get_logger,
@@ -24,8 +25,8 @@ logger = get_logger(__name__)
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
-        title="IFRN Editorial Portal API — Fase 1",
-        version="0.1.0",
+        title="IFRN Editorial Portal API — Fase 1 / Fase 2 / Fase 3.1",
+        version="0.3.0",
     )
 
     app.add_middleware(
@@ -65,10 +66,27 @@ def create_app() -> FastAPI:
             },
         )
 
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        from .logging import get_correlation_id
+
+        log_event(logger, "request.error", path=request.url.path, error="invalid_request")
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": "invalid_request",
+                "message": "Requisição inválida.",
+                "correlation_id": get_correlation_id(),
+            },
+        )
+
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(me.router)
     app.include_router(documents.router)
+    app.include_router(submissions.router)
 
     return app
 

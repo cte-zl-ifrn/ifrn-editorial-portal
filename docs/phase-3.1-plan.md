@@ -63,32 +63,58 @@ sem upload de imagens ou arquivos.
    estados de resultado (sucesso com link do PR; erro; conflito).
 5. `docs/api/openapi.yaml` atualizado com `POST /api/submissions`.
 
+**Entregue** (nomes de arquivo reais): `backend/src/github/client.py`
+(+ `get_main_branch_sha`, `create_branch`, `update_file_content`,
+`create_pull_request`); `backend/src/services/submission_service.py`;
+`backend/src/errors.py:DocumentConflictError`;
+`backend/src/models/requests.py:SubmissionRequest`;
+`backend/src/models/responses.py:{PullRequestInfo,SubmissionResponse}`;
+`backend/src/handlers/submissions.py`; `backend/src/app.py` (registro da
+rota + handler de `RequestValidationError` para manter o formato de erro
+consistente); `backend/tests/test_submissions.py`.
+`frontend/src/services/submissionService.ts`;
+`frontend/src/composables/useSubmission.ts`;
+`frontend/src/views/HomeView.vue` (formulário de envio + estados de
+resultado); `frontend/tests/{useSubmission,submissionService}.spec.ts`.
+
 ## Critérios de aceite / definição de pronto
 
-- [ ] Um usuário autorizado consegue enviar o corpo editado e receber, na
-      resposta, o link de um Pull Request real aberto no `central-ajuda`.
-- [ ] O Pull Request contém: título objetivo, resumo informado pelo
+- [x] Um usuário autorizado consegue enviar o corpo editado e receber, na
+      resposta, o link de um Pull Request (`handlers/submissions.py` →
+      `services/submission_service.py`). Confirmado com mocks; a criação
+      de um PR real contra o `central-ajuda` fica para a Fase 3.1.5.
+- [x] O Pull Request contém: título objetivo, resumo informado pelo
       usuário, autor (login do GitHub), data/hora, arquivo alterado, e o
-      checklist de validações do modelo já especificado.
-- [ ] A branch criada segue o formato `portal/update/{ano}/{id}-{slug}` e
-      é derivada do `sha` atual de `main` no momento da submissão.
-- [ ] O arquivo gravado é `front_matter_raw` (relido no momento da
-      gravação) + `body` (enviado pelo cliente) — nunca uma
-      reserialização do front matter, nunca o front matter enviado pelo
-      cliente.
-- [ ] Se o documento mudou no GitHub desde que o usuário começou a
-      editar (`base_sha` divergente), a submissão é rejeitada com `409`,
-      sem criar branch, commit ou PR.
-- [ ] Usuário não autorizado recebe `403` e não consegue submeter nada.
-- [ ] `owner`, `repo` e a branch base (`main`) continuam fixos no
-      backend — nenhum parâmetro de requisição os sobrescreve.
-- [ ] Nenhuma permissão além de `Contents: Read and write` e
-      `Pull requests: Read and write` é usada.
-- [ ] Testes automatizados cobrem sucesso, conflito, autorização, e
-      falha em cada chamada ao GitHub (branch/commit/PR), todas
-      mockadas.
-- [ ] `ruff check`, `pytest`, `eslint`, `vue-tsc` e `vitest` passam.
-- [ ] `docs/api/openapi.yaml` reflete o novo endpoint.
+      checklist de validações do modelo já especificado
+      (`_build_pull_request_body`).
+- [x] A branch criada segue o formato `portal/update/{ano}/{id}-{slug}` e
+      é derivada do `sha` atual de `main` no momento da submissão
+      (`get_main_branch_sha` + `create_branch`).
+- [x] O arquivo gravado é `front_matter_raw` (relido no momento da
+      gravação via `split_front_matter`) + `body` (enviado pelo
+      cliente) — nunca uma reserialização do front matter, nunca o front
+      matter enviado pelo cliente (que nem é aceito pelo
+      `SubmissionRequest`).
+- [x] Se o documento mudou no GitHub desde que o usuário começou a
+      editar (`base_sha` divergente), a submissão é rejeitada com `409`
+      (`DocumentConflictError`), sem criar branch, commit ou PR —
+      testado explicitamente checando que as rotas de escrita mockadas
+      não foram chamadas.
+- [x] Usuário não autorizado recebe `403` e não consegue submeter nada.
+- [x] `owner`, `repo` e a branch base (`main`) continuam fixos no
+      backend — `SubmissionRequest` não declara esses campos; um teste
+      confirma que enviá-los mesmo assim não tem efeito.
+- [x] Nenhuma permissão além de `Contents: Read and write` e
+      `Pull requests: Read and write` é usada (mesmas chamadas de leitura
+      já existentes + Contents API para escrita + API de refs/pulls).
+- [x] Testes automatizados cobrem sucesso, conflito, autorização
+      (401/403), validação (422 para corpo/resumo vazios), e falha em
+      cada chamada ao GitHub (branch/commit/PR), todas mockadas — 10
+      testes novos em `backend/tests/test_submissions.py` (41 no total
+      no backend).
+- [x] `ruff check`, `pytest`, `eslint`, `vue-tsc` e `vitest` passam;
+      `npm run build` gera bundle de produção sem erro.
+- [x] `docs/api/openapi.yaml` reflete o novo endpoint.
 
 ## Riscos técnicos e decisões de arquitetura
 
@@ -139,23 +165,25 @@ antes de testar contra o `central-ajuda` real**:
 
 - Fase 2.1 e Fase 2.2 concluídas e validadas (parser, serializer, prévia
   local já funcionando).
-- **Ação operacional, fora do código**: atualizar a instalação da GitHub
-  App em `cte-zl-ifrn/central-ajuda` para incluir `Contents: Read and
-  write` e `Pull requests: Read and write` (hoje restrita a
-  `Contents: Read-only` e `Metadata: Read-only`, ver
-  [ADR-0004](decisions/0004-integracao-github-app.md)). Sem isso, a
-  submissão falha com erro de comunicação com o GitHub (permissão
-  insuficiente) — a implementação e os testes automatizados (mockados)
-  não dependem dessa atualização, só a validação manual contra o GitHub
-  real.
+- ~~Ação operacional, fora do código: atualizar a instalação da GitHub App
+  em `cte-zl-ifrn/central-ajuda` para incluir `Contents: Read and write` e
+  `Pull requests: Read and write`~~ — **concluída** (confirmado pelo
+  mantenedor na [issue #12](https://github.com/cte-zl-ifrn/ifrn-editorial-portal/issues/12):
+  `Contents: Read and write`, `Pull requests: Read and write`,
+  `Metadata: Read-only`, acesso restrito a `cte-zl-ifrn/central-ajuda`).
 - Confirmação explícita de que é aceitável abrir Pull Requests de teste
-  no `central-ajuda` durante a validação manual (ver roteiro acima).
+  no `central-ajuda` durante a validação manual — **concedida**, incluindo
+  merge real de um deles (ver roteiro acima).
 
-## Decisões em aberto (específicas da Fase 3.1)
+## Decisões tomadas durante a implementação
 
-- Texto exato do campo de resumo/justificativa no frontend (obrigatório
-  ou opcional; tamanho mínimo) — a decidir durante a implementação.
-- Formato exato do identificador de submissão usado no nome da branch
-  (ex.: sufixo numérico incremental vs. hash curto) — qualquer um serve
-  desde que seja razoavelmente único; a decidir na implementação sem
-  necessidade de ADR.
+- Resumo/justificativa é obrigatório no frontend (`SubmissionRequest.summary`
+  exige pelo menos 1 caractere; o botão de envio fica desabilitado até o
+  campo ser preenchido).
+- Identificador de submissão: `secrets.token_hex(4)` (8 caracteres
+  hexadecimais) — simples e suficientemente único para o volume desta
+  fase, sem exigir uma ADR própria.
+- Handler global de `RequestValidationError` adicionado a `app.py` para
+  que erros de validação do Pydantic (corpo/resumo vazios) respondam no
+  mesmo formato `{error, message, correlation_id}` dos demais erros da
+  API, em vez do formato padrão do FastAPI.

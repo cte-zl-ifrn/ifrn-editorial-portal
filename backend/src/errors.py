@@ -56,3 +56,12 @@ class InvalidFrontMatterError(PortalError):
 class MissingConfigurationError(PortalError):
     error_code = "missing_configuration"
     status_code = 500
+
+
+class DocumentConflictError(PortalError):
+    """Ver ADR-0011: o backend relê o documento antes de gravar e compara
+    com `base_sha` — divergência significa que o arquivo mudou desde que
+    o usuário começou a editar."""
+
+    error_code = "document_conflict"
+    status_code = 409

@@ -35,6 +35,18 @@ class DocumentResponse(BaseModel):
     body: str
 
 
+class PullRequestInfo(BaseModel):
+    number: int
+    html_url: str
+    state: str
+
+
+class SubmissionResponse(BaseModel):
+    submission_id: str
+    branch: str
+    pull_request: PullRequestInfo
+
+
 class ErrorResponse(BaseModel):
     error: str
     message: str | None = None

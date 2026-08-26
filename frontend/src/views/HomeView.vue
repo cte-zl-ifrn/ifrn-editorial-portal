@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useSession } from '../composables/useSession'
 import { useSampleDocument } from '../composables/useSampleDocument'
+import { useSubmission } from '../composables/useSubmission'
 import { tiptapToMarkdown } from '../lib/tiptapToMarkdown'
 import StatusMessage from '../components/StatusMessage.vue'
 import FrontMatterPanel from '../components/FrontMatterPanel.vue'
@@ -20,20 +21,48 @@ function handleContentUpdate(doc: TiptapDocument): void {
 }
 
 /**
- * Prévia do documento resultante: front_matter_raw (inalterado) + corpo
- * serializado a partir do estado atual do Tiptap — nunca uma
- * reserialização do front matter (ver ADR-0009). Nada aqui é enviado ao
- * backend ou ao GitHub; é só para inspeção manual (Fase 2.2.5).
+ * Corpo serializado a partir do estado atual do Tiptap — sem front
+ * matter (ver ADR-0009). Usado tanto na prévia quanto no envio da
+ * submissão (Fase 3.1); o backend relê o front matter fresco, nunca
+ * confia no que o cliente envia (ver ADR-0011).
  */
-const preview = computed<{ markdown: string; error: string | null }>(() => {
-  if (!document.value || !currentDoc.value) return { markdown: '', error: null }
+const serializedBody = computed<{ markdown: string | null; error: string | null }>(() => {
+  if (!currentDoc.value) return { markdown: null, error: null }
   try {
-    const body = tiptapToMarkdown(currentDoc.value)
-    return { markdown: document.value.front_matter_raw + body, error: null }
+    return { markdown: tiptapToMarkdown(currentDoc.value), error: null }
   } catch (error) {
-    return { markdown: '', error: error instanceof Error ? error.message : 'Erro desconhecido.' }
+    return { markdown: null, error: error instanceof Error ? error.message : 'Erro desconhecido.' }
   }
 })
+
+/**
+ * Prévia do documento resultante: front_matter_raw (inalterado) + corpo
+ * serializado. Nada aqui é enviado ao backend ou ao GitHub por si só; é
+ * só para inspeção manual (Fase 2.2.5).
+ */
+const preview = computed<{ markdown: string; error: string | null }>(() => {
+  if (!document.value || serializedBody.value.markdown === null) {
+    return { markdown: '', error: serializedBody.value.error }
+  }
+  return { markdown: document.value.front_matter_raw + serializedBody.value.markdown, error: null }
+})
+
+const summary = ref('')
+const {
+  status: submissionStatus,
+  result: submissionResult,
+  errorMessage: submissionError,
+  submit: submitChange,
+} = useSubmission()
+
+async function handleSubmit(): Promise<void> {
+  if (!document.value || serializedBody.value.markdown === null) return
+  await submitChange({
+    body: serializedBody.value.markdown,
+    base_sha: document.value.sha,
+    summary: summary.value,
+  })
+}
 </script>
 
 <template>
@@ -47,7 +76,7 @@ const preview = computed<{ markdown: string; error: string | null }>(() => {
     </header>
 
     <section aria-labelledby="sample-document-heading">
-      <h2 id="sample-document-heading">Documento de demonstração (Fase 2.2 — edição, nada é salvo)</h2>
+      <h2 id="sample-document-heading">Documento de demonstração (Fase 3.1 — envio real via Pull Request)</h2>
 
       <StatusMessage v-if="status === 'loading'">Carregando documento…</StatusMessage>
 
@@ -67,12 +96,51 @@ const preview = computed<{ markdown: string; error: string | null }>(() => {
     </section>
 
     <section v-if="status === 'loaded' && document" aria-labelledby="preview-heading">
-      <h2 id="preview-heading">Prévia do Markdown resultante (não salvo em nenhum lugar)</h2>
+      <h2 id="preview-heading">Prévia do Markdown resultante</h2>
 
       <StatusMessage v-if="preview.error" kind="error">
         Não foi possível gerar a prévia: {{ preview.error }}
       </StatusMessage>
       <pre v-else class="preview">{{ preview.markdown }}</pre>
+    </section>
+
+    <section v-if="status === 'loaded' && document" aria-labelledby="submit-heading">
+      <h2 id="submit-heading">Enviar alteração</h2>
+
+      <div class="submit-form">
+        <label for="summary">Resumo da alteração</label>
+        <textarea
+          id="summary"
+          v-model="summary"
+          rows="3"
+          placeholder="Descreva o que foi alterado e por quê"
+          :disabled="submissionStatus === 'submitting'"
+        ></textarea>
+        <button
+          type="button"
+          :disabled="submissionStatus === 'submitting' || !summary.trim() || !!preview.error"
+          @click="handleSubmit"
+        >
+          {{ submissionStatus === 'submitting' ? 'Enviando…' : 'Enviar alteração' }}
+        </button>
+      </div>
+
+      <StatusMessage v-if="submissionStatus === 'success' && submissionResult">
+        Pull Request criado:
+        <a :href="submissionResult.pull_request.html_url" target="_blank" rel="noopener noreferrer">
+          #{{ submissionResult.pull_request.number }}
+        </a>
+        (branch <code>{{ submissionResult.branch }}</code>)
+      </StatusMessage>
+
+      <StatusMessage v-else-if="submissionStatus === 'conflict'" kind="error">
+        O documento foi alterado no repositório desde que você começou a editar.
+        Recarregue a página para obter a versão mais recente antes de enviar de novo.
+      </StatusMessage>
+
+      <StatusMessage v-else-if="submissionStatus === 'error'" kind="error">
+        Não foi possível enviar a alteração: {{ submissionError }}
+      </StatusMessage>
     </section>
   </main>
 </template>
@@ -111,11 +179,34 @@ const preview = computed<{ markdown: string; error: string | null }>(() => {
   font-size: 0.85rem;
 }
 
+.submit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.submit-form textarea {
+  font-family: inherit;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+}
+
+.submit-form button {
+  align-self: flex-start;
+}
+
 button {
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
   border: 1px solid #6b7280;
   background: transparent;
   cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

@@ -1,10 +1,13 @@
-"""Chamadas à API do GitHub usadas na Fase 1.
+"""Chamadas à API do GitHub usadas nas Fases 1, 2 e 3.
 
 Duas identidades distintas usam este cliente (ver
 docs/architecture/authentication-flow.md):
 - o token de acesso OAuth do usuário, apenas para identificá-lo;
-- o installation access token da GitHub App, para verificar permissão e
-  ler conteúdo do repositório fixo.
+- o installation access token da GitHub App, para verificar permissão,
+  ler e (desde a Fase 3) gravar conteúdo no repositório fixo.
+
+A gravação (Fase 3, ver ADR-0011) usa chamadas sequenciais à Contents API
+e à API de referências Git — não a Git Data API de blobs/trees.
 """
 
 from __future__ import annotations
@@ -105,3 +108,85 @@ def get_repository_content(
         "content": decoded,
         "sha": payload["sha"],
     }
+
+
+def get_main_branch_sha(client: httpx.Client, settings: Settings, installation_token: str) -> str:
+    url = (
+        f"{settings.github_api_base_url}/repos/"
+        f"{settings.github_owner}/{settings.github_repository}/git/ref/heads/"
+        f"{settings.github_base_branch}"
+    )
+    response = client.get(
+        url, headers={"Authorization": f"Bearer {installation_token}", "Accept": _ACCEPT_JSON}
+    )
+    if response.status_code != 200:
+        raise GithubCommunicationError("Falha ao obter o SHA atual da branch base.")
+    return str(response.json()["object"]["sha"])
+
+
+def create_branch(
+    client: httpx.Client,
+    settings: Settings,
+    installation_token: str,
+    branch_name: str,
+    base_sha: str,
+) -> None:
+    url = (
+        f"{settings.github_api_base_url}/repos/"
+        f"{settings.github_owner}/{settings.github_repository}/git/refs"
+    )
+    response = client.post(
+        url,
+        headers={"Authorization": f"Bearer {installation_token}", "Accept": _ACCEPT_JSON},
+        json={"ref": f"refs/heads/{branch_name}", "sha": base_sha},
+    )
+    if response.status_code != 201:
+        raise GithubCommunicationError("Falha ao criar a branch da submissão.")
+
+
+def update_file_content(
+    client: httpx.Client,
+    settings: Settings,
+    installation_token: str,
+    path: str,
+    content: str,
+    message: str,
+    branch: str,
+    sha: str,
+) -> dict:
+    url = (
+        f"{settings.github_api_base_url}/repos/"
+        f"{settings.github_owner}/{settings.github_repository}/contents/{path}"
+    )
+    encoded_content = base64.b64encode(content.encode("utf-8")).decode("ascii")
+    response = client.put(
+        url,
+        headers={"Authorization": f"Bearer {installation_token}", "Accept": _ACCEPT_JSON},
+        json={"message": message, "content": encoded_content, "branch": branch, "sha": sha},
+    )
+    if response.status_code not in (200, 201):
+        raise GithubCommunicationError("Falha ao gravar o arquivo na branch da submissão.")
+    return response.json()
+
+
+def create_pull_request(
+    client: httpx.Client,
+    settings: Settings,
+    installation_token: str,
+    title: str,
+    head: str,
+    base: str,
+    body: str,
+) -> dict:
+    url = (
+        f"{settings.github_api_base_url}/repos/"
+        f"{settings.github_owner}/{settings.github_repository}/pulls"
+    )
+    response = client.post(
+        url,
+        headers={"Authorization": f"Bearer {installation_token}", "Accept": _ACCEPT_JSON},
+        json={"title": title, "head": head, "base": base, "body": body},
+    )
+    if response.status_code != 201:
+        raise GithubCommunicationError("Falha ao criar o Pull Request.")
+    return response.json()

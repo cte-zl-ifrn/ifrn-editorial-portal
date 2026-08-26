@@ -1,12 +1,13 @@
-# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1)
+# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1)
 
 Backend em Python (FastAPI), pensado para rodar em AWS Lambda por trás de
 um API Gateway HTTP API (ver
 [ADR-0005](../docs/decisions/0005-backend-lambda-api-gateway.md)), mas
 executável localmente com `uvicorn` sem qualquer dependência de AWS.
 
-Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md) e
-[docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md). Contrato completo da
+Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
+[docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md) e
+[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md). Contrato completo da
 API: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Por que FastAPI
@@ -22,12 +23,12 @@ sem introduzir Django: tipagem com Pydantic, testes diretos via
 ```text
 backend/
 ├── src/
-│   ├── handlers/    # rotas FastAPI (health, auth, me, documents)
-│   ├── services/    # orquestração (login, autorização, leitura de documento)
+│   ├── handlers/    # rotas FastAPI (health, auth, me, documents, submissions)
+│   ├── services/    # orquestração (login, autorização, leitura, submissão)
 │   ├── github/      # cliente da API do GitHub e autenticação da GitHub App
 │   ├── auth/         # sessão e state OAuth (cookies assinados)
 │   ├── markdown/      # separação front matter/corpo (Fase 2.1, ADR-0009)
-│   ├── models/       # esquemas de resposta (Pydantic)
+│   ├── models/       # esquemas de requisição/resposta (Pydantic)
 │   ├── config.py     # configuração via variáveis de ambiente
 │   ├── logging.py    # logging estruturado com correlation_id
 │   ├── errors.py      # erros de domínio → status HTTP
@@ -58,9 +59,11 @@ você precisa de:
    callback `http://localhost:8000/auth/callback`, para autenticação da
    pessoa usuária.
 2. Uma **GitHub App** instalada em `cte-zl-ifrn/central-ajuda`, com
-   permissões `Contents: Read-only` e `Metadata: Read-only` (ver
-   [ADR-0004](../docs/decisions/0004-integracao-github-app.md) e a nota de
-   escopo em `docs/phase-1-plan.md`), com sua chave privada em
+   permissões `Contents: Read and write`, `Pull requests: Read and write`
+   e `Metadata: Read-only` (ver
+   [ADR-0004](../docs/decisions/0004-integracao-github-app.md) — a partir
+   da Fase 3.1 as permissões de escrita, já previstas na ADR-0004, são
+   efetivamente usadas), com sua chave privada em
    `GITHUB_APP_PRIVATE_KEY`.
 
 Sem essas credenciais reais, os testes automatizados continuam funcionando
@@ -103,6 +106,22 @@ testes que não precisam validar o fluxo OAuth completo.
   são segredos: apenas variáveis de ambiente em desenvolvimento; em
   produção, AWS Secrets Manager (ver ADR-0005). Nunca aparecem em logs
   (ver `src/logging.py`, que filtra campos sensíveis por nome).
+
+## Escrita no central-ajuda (Fase 3.1)
+
+`POST /api/submissions` cria uma branch, grava o documento e abre um Pull
+Request — ver [ADR-0011](../docs/decisions/0011-escrita-branch-commit-pull-request.md)
+e [docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md). Pontos importantes:
+
+- O backend **relê** o documento (`get_repository_content`) no momento da
+  gravação para obter o `sha` e o `front_matter_raw` atuais — nunca
+  confia no que o cliente enviou. Se o `sha` divergir do `base_sha`
+  enviado na requisição, a submissão falha com `409` antes de qualquer
+  gravação.
+- A gravação usa chamadas sequenciais à Contents API (uma por arquivo),
+  não a Git Data API de blobs/trees.
+- Idempotência é *best-effort*: não há armazenamento de deduplicação
+  nesta fase — uma requisição repetida pode gerar branch/PR duplicados.
 
 ## Lambda
 

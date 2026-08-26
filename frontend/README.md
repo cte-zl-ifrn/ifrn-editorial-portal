@@ -1,12 +1,13 @@
-# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 2.2)
+# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 2.2 / Fase 3.1)
 
 Frontend em Vue 3 + TypeScript + Vite (ver
 [ADR-0008](../docs/decisions/0008-frontend-vue-3.md)), publicado como
 build estático (compatível com GitHub Pages).
 
 Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
-[docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md) e
-[docs/phase-2.2-plan.md](../docs/phase-2.2-plan.md). Contrato completo da
+[docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md),
+[docs/phase-2.2-plan.md](../docs/phase-2.2-plan.md) e
+[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md). Contrato completo da
 API consumida: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Estrutura
@@ -15,8 +16,8 @@ API consumida: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 frontend/
 ├── src/
 │   ├── components/    # StatusMessage, FrontMatterPanel, DocumentViewer (Tiptap)
-│   ├── composables/   # useSession, useSampleDocument
-│   ├── services/      # apiClient, authService, documentService
+│   ├── composables/   # useSession, useSampleDocument, useSubmission
+│   ├── services/      # apiClient, authService, documentService, submissionService
 │   ├── lib/             # markdownToTiptap, tiptapToMarkdown, tiptapExtensions
 │   ├── types/          # tipos compartilhados (espelham a API) e tiptap.ts
 │   ├── views/           # HomeView, LoginView, UnauthorizedView
@@ -55,6 +56,21 @@ Ver [ADR-0009](../docs/decisions/0009-conversao-markdown-tiptap-e-front-matter.m
 para a estratégia completa de conversão, preservação do front matter e as
 limitações conhecidas (normalizações cosmética documentadas no cabeçalho
 de `tiptapToMarkdown.ts`).
+
+## Envio da alteração (Fase 3.1)
+
+A seção "Enviar alteração" de `HomeView.vue` chama
+`createSubmission` (`src/services/submissionService.ts`) via
+`useSubmission` (`src/composables/useSubmission.ts`) com o corpo já
+serializado (`tiptapToMarkdown`), o `sha` do documento carregado
+(`base_sha`) e um resumo obrigatório informado pelo usuário. O front
+matter **não** é enviado — o backend relê o original no momento da
+gravação (ver [ADR-0011](../docs/decisions/0011-escrita-branch-commit-pull-request.md)).
+
+A resposta é tratada em três estados: sucesso (mostra o link do Pull
+Request criado), conflito (`document_conflict` — o documento mudou no
+repositório desde o carregamento; a UI orienta a recarregar a página) e
+erro genérico. Nenhuma escrita adicional é tentada automaticamente.
 
 ## Configuração
 
