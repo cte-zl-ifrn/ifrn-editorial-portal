@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     github_api_base_url: str = "https://api.github.com"
     github_oauth_base_url: str = "https://github.com"
 
+    # Assets (Fase 3.2, ADR-0007) — limites de tamanho por tipo.
+    max_image_size_bytes: int = 5_000_000
+    max_file_size_bytes: int = 20_000_000
+
     @field_validator("github_app_private_key")
     @classmethod
     def _normalize_private_key(cls, value: str) -> str:

@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: IFRN Editorial Portal API — Fase 1 / Fase 2 / Fase 3.1
+  title: IFRN Editorial Portal API — Fase 1 / Fase 2 / Fase 3
   description: >-
     API do ifrn-editorial-portal. Fase 1: health check, autenticação,
     sessão, autorização e leitura de um documento Markdown de demonstração
@@ -10,10 +10,11 @@ info:
     habilitada no Tiptap, com serialização de volta para Markdown feita
     inteiramente no frontend (não faz parte desta API). Fase 3.1: envio
     real da alteração — cria branch, grava o arquivo e abre um Pull
-    Request no central-ajuda (ver ADR-0011). Upload de assets
-    (imagens/arquivos) ainda não incluído — isso é Fase 3.2, conforme
+    Request no central-ajuda (ver ADR-0011). Fase 3.2: a mesma submissão
+    aceita assets (imagens) gravados na mesma branch, validados pelo
+    backend (MIME, assinatura, tamanho, nome — ver ADR-0007), conforme
     docs/phase-3.1-plan.md e docs/phase-3.2-plan.md.
-  version: "0.3.0"
+  version: "0.4.0"
 servers:
   - url: http://localhost:8000
     description: Backend local (desenvolvimento)
@@ -210,15 +211,20 @@ paths:
   /api/submissions:
     post:
       tags: [submissions]
-      summary: Cria uma branch, grava o documento editado e abre um Pull Request
+      summary: Cria uma branch, grava o documento (e assets) editados, e abre um Pull Request
       description: >-
-        Fase 3.1: escreve apenas no documento de demonstração fixo (sem
-        assets — isso é Fase 3.2). O backend relê o arquivo original no
-        momento da gravação para obter o front matter atual e detectar
-        conflito de edição concorrente (`base_sha` divergente do `sha`
-        atual retorna 409, sem gravar nada). `owner`, `repo` e a branch
-        base (`main`) são fixos no backend — não fazem parte do corpo da
-        requisição. Ver ADR-0011.
+        Fase 3.1: escreve no documento de demonstração fixo. Fase 3.2:
+        aceita também `assets` (imagens), gravados na mesma branch, com o
+        diretório calculado pelo backend a partir do documento fixo
+        (`assets/images/{categoria}/`, ver ADR-0007) — nunca aceito do
+        cliente. Assets são validados integralmente (MIME, assinatura,
+        tamanho, nome) antes de qualquer chamada ao GitHub; um asset
+        inválido não cria branch, commit ou PR. O backend relê o arquivo
+        original no momento da gravação para obter o front matter atual e
+        detectar conflito de edição concorrente (`base_sha` divergente do
+        `sha` atual retorna 409, sem gravar nada). `owner`, `repo` e a
+        branch base (`main`) são fixos no backend — não fazem parte do
+        corpo da requisição. Ver ADR-0011.
       security:
         - sessionCookie: []
       requestBody:
@@ -228,12 +234,17 @@ paths:
             schema:
               $ref: "#/components/schemas/SubmissionRequest"
             example:
-              body: "\n# Como fazer os cursos do ProITEC?\n\nTexto revisado.\n"
+              body: "\n# Como fazer os cursos do ProITEC?\n\nTexto revisado.\n\n![Tela de login](../../assets/images/proitec/como-fazer-cursos-a1b2c3d4.png)\n"
               base_sha: "8d233eaa7ad166d412ada7a87a8a28ab67072197"
-              summary: "Revisa o texto de introdução para maior clareza."
+              summary: "Revisa o texto de introdução e adiciona uma captura de tela."
+              assets:
+                - kind: "image"
+                  filename: "como-fazer-cursos-a1b2c3d4.png"
+                  content: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
+                  alt: "Tela de login"
       responses:
         "201":
-          description: Branch, commit e Pull Request criados com sucesso
+          description: Branch, commit(s) e Pull Request criados com sucesso
           content:
             application/json:
               schema:
@@ -245,6 +256,7 @@ paths:
                   number: 42
                   html_url: "https://github.com/cte-zl-ifrn/central-ajuda/pull/42"
                   state: "open"
+                asset_paths: ["assets/images/proitec/como-fazer-cursos-a1b2c3d4.png"]
         "401":
           description: Sem sessão válida
           content:
@@ -269,15 +281,21 @@ paths:
               example:
                 error: "document_conflict"
         "422":
-          description: Corpo da requisição inválido (campo ausente ou vazio)
+          description: >-
+            Corpo da requisição inválido, ou um asset rejeitado (tipo,
+            assinatura, tamanho ou nome inválidos) — nesse caso, nada é
+            gravado.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error: "invalid_request"
+              examples:
+                invalid_request:
+                  value: { error: "invalid_request" }
+                invalid_asset:
+                  value: { error: "invalid_asset", message: "Extensão '.svg' não permitida para image." }
         "502":
-          description: Falha ao criar a branch, gravar o arquivo ou abrir o Pull Request
+          description: Falha ao criar a branch, gravar um arquivo ou abrir o Pull Request
           content:
             application/json:
               schema:
@@ -365,6 +383,32 @@ components:
             Markdown do documento após o front matter, decodificado em
             UTF-8. `front_matter_raw + body` reproduz o arquivo original.
 
+    AssetInput:
+      type: object
+      required: [kind, filename, content]
+      properties:
+        kind:
+          type: string
+          enum: [image, file]
+        filename:
+          type: string
+          maxLength: 200
+          description: >-
+            Nome sugerido pelo cliente (ex.: `{slug-do-documento}-{id}.png`)
+            — sempre validado pelo backend antes de gravar (extensão
+            permitida, sem `/` nem `..`). O diretório
+            (`assets/images/{categoria}/` ou `assets/files/{categoria}/`)
+            é sempre calculado pelo backend, nunca aceito do cliente (ver
+            ADR-0007).
+        content:
+          type: string
+          description: Conteúdo binário do arquivo, em base64.
+        alt:
+          type: string
+          maxLength: 1000
+          description: "Texto alternativo — obrigatório quando kind é 'image'."
+          nullable: true
+
     SubmissionRequest:
       type: object
       required: [body, base_sha, summary]
@@ -377,6 +421,8 @@ components:
             Markdown do corpo já serializado pelo frontend (ver
             ADR-0009) — sem front matter. O backend relê o front matter
             atual no momento da gravação; não envie `front_matter_raw`.
+            Referências a assets já devem apontar para o caminho final
+            (ver exemplo do endpoint).
         base_sha:
           type: string
           minLength: 1
@@ -389,6 +435,13 @@ components:
           minLength: 1
           maxLength: 2000
           description: Resumo/justificativa da alteração, incluído no corpo do Pull Request.
+        assets:
+          type: array
+          maxItems: 20
+          default: []
+          items:
+            $ref: "#/components/schemas/AssetInput"
+          description: Assets (imagens) a gravar na mesma branch (Fase 3.2).
 
     PullRequestInfo:
       type: object
@@ -403,7 +456,7 @@ components:
 
     SubmissionResponse:
       type: object
-      required: [submission_id, branch, pull_request]
+      required: [submission_id, branch, pull_request, asset_paths]
       properties:
         submission_id:
           type: string
@@ -413,6 +466,14 @@ components:
           example: "portal/update/2026/a1b2c3d4-como-fazer-cursos"
         pull_request:
           $ref: "#/components/schemas/PullRequestInfo"
+        asset_paths:
+          type: array
+          items:
+            type: string
+          description: >-
+            Caminhos finais (no repositório) dos assets gravados, na
+            mesma ordem em que foram enviados — vazio se nenhum asset foi
+            enviado.
 
     ErrorResponse:
       type: object

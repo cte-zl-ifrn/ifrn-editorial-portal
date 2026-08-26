@@ -1,4 +1,4 @@
-# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1)
+# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1 / Fase 3.2)
 
 Backend em Python (FastAPI), pensado para rodar em AWS Lambda por trás de
 um API Gateway HTTP API (ver
@@ -6,8 +6,9 @@ um API Gateway HTTP API (ver
 executável localmente com `uvicorn` sem qualquer dependência de AWS.
 
 Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
-[docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md) e
-[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md). Contrato completo da
+[docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md),
+[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md) e
+[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md). Contrato completo da
 API: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Por que FastAPI
@@ -28,6 +29,7 @@ backend/
 │   ├── github/      # cliente da API do GitHub e autenticação da GitHub App
 │   ├── auth/         # sessão e state OAuth (cookies assinados)
 │   ├── markdown/      # separação front matter/corpo (Fase 2.1, ADR-0009)
+│   ├── assets/         # validação de imagens/arquivos (Fase 3.2, ADR-0007)
 │   ├── models/       # esquemas de requisição/resposta (Pydantic)
 │   ├── config.py     # configuração via variáveis de ambiente
 │   ├── logging.py    # logging estruturado com correlation_id
@@ -107,11 +109,13 @@ testes que não precisam validar o fluxo OAuth completo.
   produção, AWS Secrets Manager (ver ADR-0005). Nunca aparecem em logs
   (ver `src/logging.py`, que filtra campos sensíveis por nome).
 
-## Escrita no central-ajuda (Fase 3.1)
+## Escrita no central-ajuda (Fase 3.1 / Fase 3.2)
 
-`POST /api/submissions` cria uma branch, grava o documento e abre um Pull
-Request — ver [ADR-0011](../docs/decisions/0011-escrita-branch-commit-pull-request.md)
-e [docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md). Pontos importantes:
+`POST /api/submissions` cria uma branch, grava o documento (e assets) e
+abre um Pull Request — ver
+[ADR-0011](../docs/decisions/0011-escrita-branch-commit-pull-request.md),
+[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md) e
+[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md). Pontos importantes:
 
 - O backend **relê** o documento (`get_repository_content`) no momento da
   gravação para obter o `sha` e o `front_matter_raw` atuais — nunca
@@ -122,6 +126,14 @@ e [docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md). Pontos importantes:
   não a Git Data API de blobs/trees.
 - Idempotência é *best-effort*: não há armazenamento de deduplicação
   nesta fase — uma requisição repetida pode gerar branch/PR duplicados.
+- **Assets** (`request.assets`, ver ADR-0007): validados integralmente
+  (`src/assets/validation.py` — extensão permitida, assinatura/magic
+  bytes, tamanho máximo, nome seguro) antes de qualquer chamada ao
+  GitHub. O diretório final (`assets/images/{categoria}/`) é sempre
+  calculado a partir do documento fixo — o `filename` no payload é só
+  uma sugestão do frontend, nunca aceito sem validar. SVG não é
+  suportado nesta fase (exigiria sanitização de script, desnecessária
+  para o MVP).
 
 ## Lambda
 

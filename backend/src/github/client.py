@@ -149,20 +149,27 @@ def update_file_content(
     settings: Settings,
     installation_token: str,
     path: str,
-    content: str,
+    content: str | bytes,
     message: str,
     branch: str,
-    sha: str,
+    sha: str | None = None,
 ) -> dict:
+    """`sha` é obrigatório para atualizar um arquivo existente (Fase 3.1) e
+    deve ser omitido para criar um arquivo novo (assets, Fase 3.2) — a
+    Contents API rejeita a chamada se os dois casos forem invertidos."""
     url = (
         f"{settings.github_api_base_url}/repos/"
         f"{settings.github_owner}/{settings.github_repository}/contents/{path}"
     )
-    encoded_content = base64.b64encode(content.encode("utf-8")).decode("ascii")
+    raw_content = content.encode("utf-8") if isinstance(content, str) else content
+    encoded_content = base64.b64encode(raw_content).decode("ascii")
+    payload = {"message": message, "content": encoded_content, "branch": branch}
+    if sha is not None:
+        payload["sha"] = sha
     response = client.put(
         url,
         headers={"Authorization": f"Bearer {installation_token}", "Accept": _ACCEPT_JSON},
-        json={"message": message, "content": encoded_content, "branch": branch, "sha": sha},
+        json=payload,
     )
     if response.status_code not in (200, 201):
         raise GithubCommunicationError("Falha ao gravar o arquivo na branch da submissão.")

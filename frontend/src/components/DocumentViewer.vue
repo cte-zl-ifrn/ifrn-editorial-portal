@@ -65,11 +65,33 @@ function setLink(): void {
   }
 }
 
+/**
+ * Upload de arquivo local (Fase 3.2) — não mais uma URL já publicada
+ * (comportamento da Fase 2.2). A imagem é inserida como uma `data:` URL
+ * para prévia imediata; `resolvePendingAssets`
+ * (`src/lib/pendingAssets.ts`) troca isso pelo caminho relativo final e
+ * extrai o conteúdo para envio como asset só no momento da prévia/envio
+ * (ver HomeView.vue) — este componente não precisa saber nada sobre
+ * caminhos de asset ou submissão.
+ */
 function setImage(): void {
-  const src = window.prompt('URL da imagem:')
-  if (!src) return
-  const alt = window.prompt('Texto alternativo (obrigatório para acessibilidade):') ?? ''
-  editor.value?.chain().focus().setImage({ src, alt }).run()
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/png,image/jpeg,image/gif,image/webp'
+  input.addEventListener('change', () => {
+    const file = input.files?.[0]
+    if (!file) return
+    const alt = window.prompt('Texto alternativo (obrigatório para acessibilidade):')
+    if (!alt) return
+    const reader = new FileReader()
+    reader.addEventListener('load', () => {
+      const dataUrl = reader.result
+      if (typeof dataUrl !== 'string') return
+      editor.value?.chain().focus().setImage({ src: dataUrl, alt }).run()
+    })
+    reader.readAsDataURL(file)
+  })
+  input.click()
 }
 </script>
 

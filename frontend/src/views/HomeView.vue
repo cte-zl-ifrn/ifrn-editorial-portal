@@ -4,10 +4,12 @@ import { useSession } from '../composables/useSession'
 import { useSampleDocument } from '../composables/useSampleDocument'
 import { useSubmission } from '../composables/useSubmission'
 import { tiptapToMarkdown } from '../lib/tiptapToMarkdown'
+import { resolvePendingAssets } from '../lib/pendingAssets'
 import StatusMessage from '../components/StatusMessage.vue'
 import FrontMatterPanel from '../components/FrontMatterPanel.vue'
 import DocumentViewer from '../components/DocumentViewer.vue'
 import type { TiptapDocument } from '../types/tiptap'
+import type { SubmissionAsset } from '../types'
 
 const { user, logout } = useSession()
 const { status, document, errorMessage, load } = useSampleDocument()
@@ -21,15 +23,29 @@ function handleContentUpdate(doc: TiptapDocument): void {
 }
 
 /**
+ * Substitui imagens de upload local (data: URL) pelo caminho relativo
+ * final e extrai o conteúdo binário como assets pendentes (Fase 3.2, ver
+ * ADR-0007) — calculado uma única vez por edição, e reaproveitado tanto
+ * na prévia quanto no envio, para que os nomes de arquivo (que incluem um
+ * id aleatório) sejam exatamente os mesmos nos dois lugares.
+ */
+const resolvedSubmission = computed<{ doc: TiptapDocument; assets: SubmissionAsset[] } | null>(
+  () => {
+    if (!currentDoc.value || !document.value) return null
+    return resolvePendingAssets(currentDoc.value, document.value.path)
+  },
+)
+
+/**
  * Corpo serializado a partir do estado atual do Tiptap — sem front
  * matter (ver ADR-0009). Usado tanto na prévia quanto no envio da
  * submissão (Fase 3.1); o backend relê o front matter fresco, nunca
  * confia no que o cliente envia (ver ADR-0011).
  */
 const serializedBody = computed<{ markdown: string | null; error: string | null }>(() => {
-  if (!currentDoc.value) return { markdown: null, error: null }
+  if (!resolvedSubmission.value) return { markdown: null, error: null }
   try {
-    return { markdown: tiptapToMarkdown(currentDoc.value), error: null }
+    return { markdown: tiptapToMarkdown(resolvedSubmission.value.doc), error: null }
   } catch (error) {
     return { markdown: null, error: error instanceof Error ? error.message : 'Erro desconhecido.' }
   }
@@ -37,8 +53,9 @@ const serializedBody = computed<{ markdown: string | null; error: string | null 
 
 /**
  * Prévia do documento resultante: front_matter_raw (inalterado) + corpo
- * serializado. Nada aqui é enviado ao backend ou ao GitHub por si só; é
- * só para inspeção manual (Fase 2.2.5).
+ * serializado, já com os caminhos finais dos assets. Nada aqui é enviado
+ * ao backend ou ao GitHub por si só; é só para inspeção manual (Fase
+ * 2.2.5 / Fase 3.2.5).
  */
 const preview = computed<{ markdown: string; error: string | null }>(() => {
   if (!document.value || serializedBody.value.markdown === null) {
@@ -56,11 +73,14 @@ const {
 } = useSubmission()
 
 async function handleSubmit(): Promise<void> {
-  if (!document.value || serializedBody.value.markdown === null) return
+  if (!document.value || serializedBody.value.markdown === null || !resolvedSubmission.value) {
+    return
+  }
   await submitChange({
     body: serializedBody.value.markdown,
     base_sha: document.value.sha,
     summary: summary.value,
+    assets: resolvedSubmission.value.assets,
   })
 }
 </script>
@@ -76,7 +96,7 @@ async function handleSubmit(): Promise<void> {
     </header>
 
     <section aria-labelledby="sample-document-heading">
-      <h2 id="sample-document-heading">Documento de demonstração (Fase 3.1 — envio real via Pull Request)</h2>
+      <h2 id="sample-document-heading">Documento de demonstração (Fase 3.2 — envio com imagens via Pull Request)</h2>
 
       <StatusMessage v-if="status === 'loading'">Carregando documento…</StatusMessage>
 

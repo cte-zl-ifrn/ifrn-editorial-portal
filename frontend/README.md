@@ -1,4 +1,4 @@
-# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 2.2 / Fase 3.1)
+# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 2.2 / Fase 3.1 / Fase 3.2)
 
 Frontend em Vue 3 + TypeScript + Vite (ver
 [ADR-0008](../docs/decisions/0008-frontend-vue-3.md)), publicado como
@@ -6,8 +6,9 @@ build estático (compatível com GitHub Pages).
 
 Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
 [docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md),
-[docs/phase-2.2-plan.md](../docs/phase-2.2-plan.md) e
-[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md). Contrato completo da
+[docs/phase-2.2-plan.md](../docs/phase-2.2-plan.md),
+[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md) e
+[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md). Contrato completo da
 API consumida: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Estrutura
@@ -18,7 +19,7 @@ frontend/
 │   ├── components/    # StatusMessage, FrontMatterPanel, DocumentViewer (Tiptap)
 │   ├── composables/   # useSession, useSampleDocument, useSubmission
 │   ├── services/      # apiClient, authService, documentService, submissionService
-│   ├── lib/             # markdownToTiptap, tiptapToMarkdown, tiptapExtensions
+│   ├── lib/             # markdownToTiptap, tiptapToMarkdown, tiptapExtensions, pendingAssets
 │   ├── types/          # tipos compartilhados (espelham a API) e tiptap.ts
 │   ├── views/           # HomeView, LoginView, UnauthorizedView
 │   ├── router/           # rotas e guarda de navegação por sessão
@@ -57,7 +58,7 @@ para a estratégia completa de conversão, preservação do front matter e as
 limitações conhecidas (normalizações cosmética documentadas no cabeçalho
 de `tiptapToMarkdown.ts`).
 
-## Envio da alteração (Fase 3.1)
+## Envio da alteração (Fase 3.1) e assets (Fase 3.2)
 
 A seção "Enviar alteração" de `HomeView.vue` chama
 `createSubmission` (`src/services/submissionService.ts`) via
@@ -71,6 +72,19 @@ A resposta é tratada em três estados: sucesso (mostra o link do Pull
 Request criado), conflito (`document_conflict` — o documento mudou no
 repositório desde o carregamento; a UI orienta a recarregar a página) e
 erro genérico. Nenhuma escrita adicional é tentada automaticamente.
+
+O botão "Imagem" da toolbar (`DocumentViewer.vue`) abre um seletor de
+arquivo local (não mais uma URL, como na Fase 2.2) e insere a imagem
+como uma `data:` URL para prévia imediata. Só no momento de gerar a
+prévia final ou enviar (`resolvePendingAssets`,
+`src/lib/pendingAssets.ts`) essa `data:` URL é trocada pelo caminho
+relativo definitivo (`../../assets/images/{categoria}/{slug}-{id}.{ext}`,
+calculado a partir do documento fixo) e o conteúdo binário é extraído
+como um asset a enviar junto — o backend valida tudo de novo antes de
+gravar (ver [ADR-0007](../docs/decisions/0007-organizacao-de-assets.md)).
+O mesmo resultado (`resolvedSubmission`, em `HomeView.vue`) alimenta
+tanto a prévia quanto o envio, para que o nome de arquivo mostrado seja
+exatamente o mesmo que é gravado.
 
 ## Configuração
 

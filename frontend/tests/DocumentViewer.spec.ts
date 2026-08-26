@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
@@ -88,5 +88,45 @@ describe('DocumentViewer', () => {
     expect(editor.isActive('bold')).toBe(true)
     const lastEmitted = wrapper.emitted('update:content')?.at(-1)?.[0]
     expect(JSON.stringify(lastEmitted)).toContain('"bold"')
+  })
+
+  it('inserts an uploaded local image as a data: URL via the Imagem button', async () => {
+    const wrapper = mount(DocumentViewer, {
+      props: { markdown: 'Texto.', editable: true },
+    })
+    await nextTick()
+    await nextTick()
+
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Texto alternativo')
+
+    // Captura o <input type="file"> criado dinamicamente pelo botão
+    // "Imagem", para simular a seleção de um arquivo pelo usuário.
+    const originalCreateElement = document.createElement.bind(document)
+    let capturedInput: HTMLInputElement | undefined
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string) => {
+        const element = originalCreateElement(tagName)
+        if (tagName === 'input') capturedInput = element as HTMLInputElement
+        return element
+      })
+
+    const imageButton = wrapper.findAll('button').find((button) => button.text() === 'Imagem')
+    expect(imageButton).toBeTruthy()
+    await imageButton!.trigger('click')
+
+    expect(capturedInput).toBeTruthy()
+    const file = new File(['fake-image-bytes'], 'foto.png', { type: 'image/png' })
+    Object.defineProperty(capturedInput, 'files', { value: [file], configurable: true })
+    capturedInput?.dispatchEvent(new Event('change'))
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('img').exists()).toBe(true)
+    })
+    expect(wrapper.find('img').attributes('src')).toMatch(/^data:image\/png;base64,/)
+    expect(wrapper.find('img').attributes('alt')).toBe('Texto alternativo')
+
+    promptSpy.mockRestore()
+    createElementSpy.mockRestore()
   })
 })

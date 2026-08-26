@@ -1,4 +1,4 @@
-from .requests import SubmissionRequest
+from .requests import AssetInput, SubmissionRequest
 from .responses import (
     DocumentResponse,
     ErrorResponse,
@@ -10,6 +10,7 @@ from .responses import (
 )
 
 __all__ = [
+    "AssetInput",
     "DocumentResponse",
     "ErrorResponse",
     "GithubUser",

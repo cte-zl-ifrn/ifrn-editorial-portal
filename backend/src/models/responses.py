@@ -45,6 +45,9 @@ class SubmissionResponse(BaseModel):
     submission_id: str
     branch: str
     pull_request: PullRequestInfo
+    asset_paths: list[str] = []
+    """Caminhos finais (no repositório) dos assets gravados, na mesma
+    ordem em que foram enviados — vazio na Fase 3.1 (sem assets)."""
 
 
 class ErrorResponse(BaseModel):

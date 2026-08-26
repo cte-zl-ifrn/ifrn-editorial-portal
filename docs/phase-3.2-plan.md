@@ -67,40 +67,63 @@ fluxo de submissão.
    assinatura incompatível com a extensão, tentativa de path traversal
    no nome), e submissão combinada (documento + assets) na mesma branch.
 
+**Entregue** (nomes de arquivo reais): `backend/src/assets/validation.py`
+(+ `backend/src/errors.py:InvalidAssetError`,
+`backend/tests/test_asset_validation.py`, 18 testes);
+`backend/src/services/submission_service.py` estendido para validar e
+gravar assets antes de abrir o PR;
+`backend/src/models/requests.py:AssetInput`;
+`backend/src/models/responses.py:SubmissionResponse.asset_paths`;
+`backend/src/github/client.py:update_file_content` agora aceita `sha`
+opcional (arquivo novo vs. atualização) e conteúdo binário.
+`frontend/src/lib/pendingAssets.ts` (resolução de upload local → caminho
+final + extração do asset, com testes em
+`frontend/tests/pendingAssets.spec.ts`); `DocumentViewer.vue` (botão
+"Imagem" agora abre um seletor de arquivo local, com prévia via `data:`
+URL); `HomeView.vue` (prévia e envio usam o mesmo documento resolvido,
+para que os nomes de arquivo batam nos dois lugares).
+
 ## Critérios de aceite / definição de pronto
 
-- [ ] Uma imagem inserida no Tiptap durante a edição é enviada junto com
+- [x] Uma imagem inserida no Tiptap durante a edição é enviada junto com
       o documento e gravada em `assets/images/{categoria}/` no mesmo
-      Pull Request.
-- [ ] Um asset com tipo, assinatura ou tamanho inválido é rejeitado antes
-      de qualquer gravação, com erro claro — nenhum commit parcial.
-- [ ] O caminho final do asset é sempre calculado pelo backend; um nome
-      de arquivo malicioso (ex.: contendo `../`) nunca resulta em
-      gravação fora de `assets/images/` ou `assets/files/`.
-- [ ] O Pull Request resultante lista todos os arquivos alterados
-      (documento + assets).
-- [ ] Testes automatizados cobrem validação de asset (casos válidos e
-      inválidos) e a submissão combinada de documento + assets.
-- [ ] `ruff check`, `pytest`, `eslint`, `vue-tsc` e `vitest` passam.
+      Pull Request (`submission_service.py`, testado com mocks em
+      `test_submission_with_image_asset_writes_it_alongside_the_document`).
+- [x] Um asset com tipo, assinatura ou tamanho inválido é rejeitado antes
+      de qualquer gravação, com erro claro (`InvalidAssetError`, 422) —
+      testado explicitamente checando que nenhuma rota do GitHub é
+      chamada quando isso acontece.
+- [x] O caminho final do asset é sempre calculado pelo backend a partir
+      do documento fixo; um nome de arquivo malicioso (contendo `../`,
+      `/`, maiúsculas ou sem extensão) é rejeitado pelo padrão de nome
+      validado em `src/assets/validation.py`.
+- [x] O Pull Request resultante lista todos os arquivos alterados
+      (documento + assets) — `_build_pull_request_body` agora recebe a
+      lista completa de arquivos.
+- [x] Testes automatizados cobrem validação de asset (18 casos válidos e
+      inválidos) e a submissão combinada de documento + assets (62
+      testes no total no backend, 73 no frontend).
+- [x] `ruff check`, `pytest`, `eslint`, `vue-tsc` e `vitest` passam;
+      `npm run build` gera bundle de produção sem erro.
 
 ## Riscos técnicos e decisões de arquitetura
 
 - Reaproveita a decisão de gravação da [ADR-0011](decisions/0011-escrita-branch-commit-pull-request.md)
   (Contents API, mesma branch) — nenhuma decisão de mecanismo de commit
-  nova é necessária.
-- **Risco principal**: upload malicioso (arquivo executável disfarçado,
-  SVG com script embutido, arquivo maior que o esperado) — mitigado pela
-  validação de MIME/assinatura/tamanho/extensão já prevista desde
-  `docs/initial-architecture.md` (seção 11) e pelos requisitos de
-  segurança gerais do projeto; nenhuma mitigação nova precisa ser
-  inventada, só implementada.
-- **Risco**: enviar documento e assets em requisições separadas pode
-  deixar a branch em um estado intermediário (documento sem a imagem que
-  ele referencia, ou vice-versa) se uma das chamadas falhar — a decisão
-  entre uma única requisição multipart/JSON com tudo, ou requisições
-  sequenciais na mesma branch com um identificador de submissão comum,
-  fica para a implementação, mas deve tratar falha parcial de forma
-  visível (nunca abrir o PR se um asset obrigatório falhou).
+  nova foi necessária; `update_file_content` passou a aceitar `sha`
+  opcional (omitido para arquivo novo, obrigatório para atualização).
+- **Risco principal**: upload malicioso — mitigado por validação de
+  assinatura/magic bytes (não só a extensão declarada), tamanho máximo
+  configurável (`MAX_IMAGE_SIZE_BYTES`/`MAX_FILE_SIZE_BYTES`) e uma lista
+  de extensões permitida. **SVG foi deliberadamente excluído** do
+  conjunto de extensões de imagem aceitas nesta fase: a seção 11.2 do
+  documento de arquitetura exige "rejeitar conteúdo SVG perigoso", o que
+  demandaria sanitização de XML/script — desnecessário para o MVP, já
+  que nenhum documento real usa SVG hoje. Reavaliar se isso se tornar
+  necessário.
+- Assets são validados **antes** de qualquer chamada ao GitHub (branch,
+  commit do documento ou dos assets) — um asset inválido nunca deixa uma
+  branch ou commit pela metade; testado explicitamente.
 
 ## Roteiro de validação manual (Fase 3.2.5)
 
@@ -125,12 +148,28 @@ sobre confirmação antes de testar contra o `central-ajuda` real:
 - Fase 3.1 concluída e validada (mecanismo de branch/commit/PR já
   funcionando para o documento).
 
-## Decisões em aberto (específicas da Fase 3.2)
+## Decisões tomadas durante a implementação
 
-- Uma única requisição (documento + assets juntos) vs. requisições
-  sequenciais associadas à mesma submissão — a decidir na implementação,
-  documentando a escolha e o tratamento de falha parcial.
-- Se `POST /api/assets/validate` (validação prévia, antes de montar a
-  submissão completa) entra nesta sub-fase ou é adiada — não bloqueia o
-  critério de aceite principal (asset inválido rejeitado na submissão),
-  é só uma melhoria de UX (feedback mais cedo).
+- **Uma única requisição** (documento + assets juntos em
+  `POST /api/submissions`), não requisições sequenciais — o backend
+  valida todos os assets antes de qualquer chamada ao GitHub, então uma
+  falha de validação nunca deixa a branch pela metade. Uma falha de
+  *escrita* no GitHub após a branch já existir (ex.: um asset cujo nome
+  colide com um arquivo já existente) continua sendo o mesmo risco
+  aceito de falha parcial já documentado na ADR-0011 para o documento.
+- `POST /api/assets/validate` (validação prévia antes de montar a
+  submissão completa) **não foi implementado** nesta fase — não
+  bloqueava o critério de aceite principal, e a submissão única já dá
+  feedback claro (422 com o motivo) sem precisar de uma chamada extra.
+  Pode ser adicionado depois como melhoria de UX.
+- Caminho do asset determinado pelo **frontend** no momento da inserção
+  (categoria + slug do documento + id aleatório), não pelo backend no
+  momento do envio — necessário porque o corpo Markdown precisa
+  referenciar o caminho final antes de a submissão existir (ver
+  `frontend/src/lib/pendingAssets.ts`). O backend segue sendo quem
+  valida e decide o diretório de verdade (ADR-0007) — o nome sugerido
+  pelo frontend é só isso, uma sugestão, sempre validada.
+- Upload de imagem na toolbar do Tiptap passou a ser **só arquivo
+  local** (antes era só URL, na Fase 2.2) — não oferece as duas opções
+  para não introduzir um mini-diálogo de escolha; documentado como troca
+  deliberada de escopo.

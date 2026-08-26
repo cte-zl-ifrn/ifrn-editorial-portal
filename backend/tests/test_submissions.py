@@ -14,8 +14,8 @@ RAW_CONTENT = (
 )
 
 
-def _mock_installation_token(router: respx.MockRouter) -> None:
-    router.post(f"{GITHUB_API}/app/installations/999/access_tokens").mock(
+def _mock_installation_token(router: respx.MockRouter) -> respx.Route:
+    return router.post(f"{GITHUB_API}/app/installations/999/access_tokens").mock(
         return_value=Response(201, json={"token": "test-installation-token"})
     )
 
@@ -68,6 +68,27 @@ def _mock_create_pull_request(
             },
         )
     )
+
+
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20
+ASSET_PATH = "assets/images/proitec/como-fazer-cursos-a1b2c3d4.png"
+
+
+def _mock_asset_write(router: respx.MockRouter, *, status_code: int = 201) -> respx.Route:
+    return router.put(f"{GITHUB_API}/repos/{REPO}/contents/{ASSET_PATH}").mock(
+        return_value=Response(status_code, json={"content": {"sha": "new-asset-sha"}})
+    )
+
+
+def _image_asset(**overrides: object) -> dict:
+    asset = {
+        "kind": "image",
+        "filename": "como-fazer-cursos-a1b2c3d4.png",
+        "content": base64.b64encode(PNG_SIGNATURE).decode("ascii"),
+        "alt": "Captura de tela do curso",
+    }
+    asset.update(overrides)
+    return asset
 
 
 def _payload(**overrides: object) -> dict:
@@ -229,3 +250,64 @@ def test_submission_ignores_client_supplied_repository_overrides(client, setting
     )
 
     assert response.status_code == 201
+
+
+@respx.mock
+def test_submission_with_image_asset_writes_it_alongside_the_document(client, settings):
+    set_session_cookie(client, settings, authorized=True, permission="write")
+    _mock_installation_token(respx)
+    _mock_current_content(respx)
+    _mock_main_branch_sha(respx)
+    _mock_create_branch(respx)
+    _mock_update_file(respx)
+    asset_route = _mock_asset_write(respx)
+    _mock_create_pull_request(respx)
+
+    response = client.post("/api/submissions", json=_payload(assets=[_image_asset()]))
+
+    assert response.status_code == 201
+    assert asset_route.call_count == 1
+    assert response.json()["asset_paths"] == [ASSET_PATH]
+
+    # O asset é gravado sem `sha` — é sempre um arquivo novo (ADR-0007).
+    request_body = asset_route.calls.last.request.content
+    assert b'"sha"' not in request_body
+
+
+@respx.mock
+def test_submission_rejects_invalid_asset_before_touching_github(client, settings):
+    set_session_cookie(client, settings, authorized=True, permission="write")
+    token_route = _mock_installation_token(respx)
+    content_route = _mock_current_content(respx)
+    branch_route = _mock_create_branch(respx)
+    file_route = _mock_update_file(respx)
+    pr_route = _mock_create_pull_request(respx)
+
+    invalid_asset = _image_asset(filename="../../etc/passwd.png")
+    response = client.post("/api/submissions", json=_payload(assets=[invalid_asset]))
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "invalid_asset"
+    assert token_route.call_count == 0
+    assert content_route.call_count == 0
+    assert branch_route.call_count == 0
+    assert file_route.call_count == 0
+    assert pr_route.call_count == 0
+
+
+@respx.mock
+def test_submission_fails_when_asset_write_fails_and_never_opens_a_pull_request(client, settings):
+    set_session_cookie(client, settings, authorized=True, permission="write")
+    _mock_installation_token(respx)
+    _mock_current_content(respx)
+    _mock_main_branch_sha(respx)
+    _mock_create_branch(respx)
+    _mock_update_file(respx)
+    _mock_asset_write(respx, status_code=422)
+    pr_route = _mock_create_pull_request(respx)
+
+    response = client.post("/api/submissions", json=_payload(assets=[_image_asset()]))
+
+    assert response.status_code == 502
+    assert response.json()["error"] == "github_communication_error"
+    assert pr_route.call_count == 0

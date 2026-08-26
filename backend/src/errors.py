@@ -65,3 +65,11 @@ class DocumentConflictError(PortalError):
 
     error_code = "document_conflict"
     status_code = 409
+
+
+class InvalidAssetError(PortalError):
+    """Ver ADR-0007 e docs/phase-3.2-plan.md: asset rejeitado antes de
+    qualquer gravação — tipo, assinatura, tamanho ou nome inválidos."""
+
+    error_code = "invalid_asset"
+    status_code = 422
