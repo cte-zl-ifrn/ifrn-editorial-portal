@@ -83,10 +83,11 @@ antes de dividir o trabalho:
   aceite;
 - ambas validadas manualmente (Fase 3.1.5 / Fase 3.2.5), no mesmo formato
   das validações anteriores;
-- pelo menos uma submissão real de teste, revisada e descartada (fechada
-  sem merge, ou mergeada e depois revertida) em ambiente que não seja o
-  `central-ajuda` de produção, ou explicitamente autorizada pelo mantenedor
-  institucional antes de testar contra o repositório real;
+- pelo menos uma submissão real de teste contra o `central-ajuda`,
+  explicitamente autorizada pelo mantenedor (ver
+  [issue #12](https://github.com/cte-zl-ifrn/ifrn-editorial-portal/issues/12))
+  — incluindo, na Fase 3.1.5, o merge real de um dos Pull Requests
+  gerados, não apenas fechá-lo sem merge;
 - `docs/api/openapi.yaml`, `docs/project-context.md` e `docs/glossary.md`
   atualizados.
 

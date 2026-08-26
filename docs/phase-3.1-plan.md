@@ -115,8 +115,7 @@ idempotência. Riscos específicos desta sub-fase:
 A ser executado e registrado (mesmo formato de
 [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md))
 quando a implementação estiver concluída — **requer confirmação explícita
-antes de testar contra o `central-ajuda` real**, mesmo que o resultado
-seja um PR fechado sem merge:
+antes de testar contra o `central-ajuda` real**:
 
 - [ ] Login com usuário autorizado → editar o documento → enviar → PR
       real criado no `central-ajuda`, com corpo, autor e checklist
@@ -128,9 +127,13 @@ seja um PR fechado sem merge:
       nada no `central-ajuda`.
 - [ ] Inspeção do Pull Request criado confirma que nenhuma permissão
       além de `Contents` e `Pull requests` foi necessária.
-- [ ] Fechar (sem merge) o(s) Pull Request(s) de teste criados durante a
-      validação, ou obter confirmação do mantenedor institucional antes
-      de fazer merge de qualquer um deles.
+- [ ] Um dos Pull Requests de teste é revisado e **mergeado de verdade**
+      no `central-ajuda` — autorizado explicitamente pelo mantenedor
+      (issue #12) para esta validação, em vez de apenas fechado sem
+      merge. Confirmar, após o merge, que o site publicado reflete a
+      alteração e que nada além do arquivo esperado foi modificado.
+      Qualquer Pull Request de teste adicional que não for aproveitado
+      deve ser fechado sem merge.
 
 ## Dependências
 
