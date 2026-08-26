@@ -2,6 +2,11 @@
 
 Desdobramento da [issue #12](https://github.com/cte-zl-ifrn/ifrn-editorial-portal/issues/12).
 
+> **Fase 3 concluída** (implementação e validação manual das duas
+> sub-fases): ver
+> [docs/phase-3.1.5-manual-validation.md](phase-3.1.5-manual-validation.md)
+> e [docs/phase-3.2.5-manual-validation.md](phase-3.2.5-manual-validation.md).
+
 ## Objetivo
 
 Fechar o caminho crítico completo do portal: depois de ler (Fase 1),

@@ -6,19 +6,23 @@ são conhecidos e quais perguntas ainda não têm resposta. Ele não substitui o
 documento de arquitetura — serve como ponto de entrada rápido antes de
 consultar os detalhes.
 
-> Estado atual: **Fase 1, Fase 2.1, Fase 2.2 e Fase 3.1 concluídas e
-> validadas manualmente** (Fase 1.5, Fase 2.1.5, Fase 2.2.5, Fase 3.1.5) —
-> o portal já escreveu de verdade no `central-ajuda` pela primeira vez:
-> [cte-zl-ifrn/central-ajuda#1](https://github.com/cte-zl-ifrn/central-ajuda/pull/1),
-> criado via branch + Pull Request pelo backend e mergeado. **Fase 3.2
-> implementada** (upload de imagem local, validada por MIME/assinatura/
-> tamanho/nome e gravada na mesma branch/PR do documento), pendente de
-> validação manual (Fase 3.2.5). Com isso, a Fase 3 planejada
-> (`docs/phase-3-plan.md`) está com toda a implementação concluída. Ver
-> [docs/phase-1-plan.md](phase-1-plan.md) e
+> Estado atual: **Fase 1, Fase 2 e Fase 3 concluídas e validadas
+> manualmente** (Fase 1.5, Fase 2.1.5, Fase 2.2.5, Fase 3.1.5, Fase
+> 3.2.5) — o portal já escreve de verdade no `central-ajuda`: documento
+> e assets (imagens) gravados na mesma branch/Pull Request, com
+> múltiplos Pull Requests de teste mergeados de verdade
+> ([central-ajuda#1](https://github.com/cte-zl-ifrn/central-ajuda/pull/1),
+> [#2](https://github.com/cte-zl-ifrn/central-ajuda/pull/2),
+> [#3](https://github.com/cte-zl-ifrn/central-ajuda/pull/3),
+> [#5](https://github.com/cte-zl-ifrn/central-ajuda/pull/5)). A
+> referência de imagem gravada é uma URL absoluta do GitHub (não um
+> caminho relativo — ver [ADR-0007](decisions/0007-organizacao-de-assets.md)),
+> decisão tomada depois de um achado real na validação manual (caminho
+> relativo divergia entre a visualização do GitHub e o site publicado
+> pelo Jekyll). Ver [docs/phase-1-plan.md](phase-1-plan.md) e
 > [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
 > para a Fase 1, [docs/phase-2-plan.md](phase-2-plan.md) para a Fase 2, e
-> [docs/phase-3-plan.md](phase-3-plan.md) para o plano da Fase 3.
+> [docs/phase-3-plan.md](phase-3-plan.md) para a Fase 3.
 
 ## Visão geral
 
@@ -155,6 +159,7 @@ produção (contato institucional definitivo, políticas de retenção etc.).
 - [docs/phase-3.1-plan.md](phase-3.1-plan.md)
 - [docs/phase-3.1.5-manual-validation.md](phase-3.1.5-manual-validation.md)
 - [docs/phase-3.2-plan.md](phase-3.2-plan.md)
+- [docs/phase-3.2.5-manual-validation.md](phase-3.2.5-manual-validation.md)
 - [docs/requirements/functional-requirements.md](requirements/functional-requirements.md)
 - [docs/requirements/non-functional-requirements.md](requirements/non-functional-requirements.md)
 - [docs/requirements/user-stories.md](requirements/user-stories.md)

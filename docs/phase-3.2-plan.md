@@ -160,9 +160,15 @@ sobre confirmação antes de testar contra o `central-ajuda` real:
       `backend/tests/test_asset_validation.py` (18 casos, incluindo
       `../../etc/passwd.png`, `/etc/passwd.png`, `..\windows\...` etc.) —
       coberto por teste automatizado, não por passo manual.
-- [ ] Fechar (sem merge) o(s) Pull Request(s) de teste, ou obter
-      confirmação do mantenedor institucional antes de merge — pendente
-      para [cte-zl-ifrn/central-ajuda#2](https://github.com/cte-zl-ifrn/central-ajuda/pull/2).
+- [x] Fechar (sem merge) o(s) Pull Request(s) de teste, ou obter
+      confirmação do mantenedor institucional antes de merge — todos os
+      Pull Requests de teste
+      ([#1](https://github.com/cte-zl-ifrn/central-ajuda/pull/1),
+      [#2](https://github.com/cte-zl-ifrn/central-ajuda/pull/2),
+      [#3](https://github.com/cte-zl-ifrn/central-ajuda/pull/3),
+      [#5](https://github.com/cte-zl-ifrn/central-ajuda/pull/5)) foram
+      mergeados de verdade pelo mantenedor institucional. Detalhes em
+      [docs/phase-3.2.5-manual-validation.md](phase-3.2.5-manual-validation.md).
 
 ### Achado adicional (fora do roteiro original): imagem não aparece ao reabrir o documento — resolvido
 
