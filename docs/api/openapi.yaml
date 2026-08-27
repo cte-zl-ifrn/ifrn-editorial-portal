@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: IFRN Editorial Portal API — Fase 1 / Fase 2 / Fase 3
+  title: IFRN Editorial Portal API — Fase 1 / Fase 2 / Fase 3 / Fase 4
   description: >-
     API do ifrn-editorial-portal. Fase 1: health check, autenticação,
     sessão, autorização e leitura de um documento Markdown de demonstração
@@ -13,8 +13,10 @@ info:
     Request no central-ajuda (ver ADR-0011). Fase 3.2: a mesma submissão
     aceita assets (imagens) gravados na mesma branch, validados pelo
     backend (MIME, assinatura, tamanho, nome — ver ADR-0007), conforme
-    docs/phase-3.1-plan.md e docs/phase-3.2-plan.md.
-  version: "0.4.0"
+    docs/phase-3.1-plan.md e docs/phase-3.2-plan.md. Fase 4.3: teto sobre
+    o corpo inteiro da submissão (413) e rate limiting nativo do API
+    Gateway (429), ver ADR-0013.
+  version: "0.5.0"
 servers:
   - url: http://localhost:8000
     description: Backend local (desenvolvimento)
@@ -280,6 +282,18 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "document_conflict"
+        "413":
+          description: >-
+            Corpo da requisição excede o tamanho máximo permitido (Fase
+            4.3, ADR-0013) — verificado antes de qualquer parsing, nada
+            é gravado. Separado dos limites por asset individual (ver
+            422/invalid_asset).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "payload_too_large"
         "422":
           description: >-
             Corpo da requisição inválido, ou um asset rejeitado (tipo,
@@ -294,6 +308,12 @@ paths:
                   value: { error: "invalid_request" }
                 invalid_asset:
                   value: { error: "invalid_asset", message: "Extensão '.svg' não permitida para image." }
+        "429":
+          description: >-
+            Limite de requisições excedido (rate limiting nativo do API
+            Gateway, Fase 4.3, ADR-0013) — resposta padrão do API
+            Gateway, não do backend; só tem efeito depois de uma
+            implantação real.
         "502":
           description: Falha ao criar a branch, gravar um arquivo ou abrir o Pull Request
           content:

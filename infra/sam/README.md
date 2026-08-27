@@ -1,4 +1,4 @@
-# Template SAM — Fase 1 / Fase 4.1 / Fase 4.2
+# Template SAM — Fase 1 / Fase 4.1 / Fase 4.2 / Fase 4.3
 
 `template.yaml` descreve a infraestrutura mínima prevista em
 [ADR-0005](../../docs/decisions/0005-backend-lambda-api-gateway.md):
@@ -10,7 +10,11 @@ ambiente (`SECRETS_MANAGER_SECRET_ARN`) — ver
 a Fase 4.2, o template também define dois alarmes do CloudWatch
 (`FunctionErrorRateAlarm`, `FunctionLatencyAlarm`) sobre as métricas
 nativas `AWS/Lambda` da função — ver
-[docs/phase-4.2-plan.md](../../docs/phase-4.2-plan.md).
+[docs/phase-4.2-plan.md](../../docs/phase-4.2-plan.md). Desde a Fase
+4.3, `PortalApi` define `ThrottleSettings` por rota (mais restritivo em
+`POST /api/submissions`, mais permissivo nas demais) — ver
+[ADR-0013](../../docs/decisions/0013-rate-limiting-api-gateway.md) e
+[docs/phase-4.3-plan.md](../../docs/phase-4.3-plan.md).
 
 **Este template não foi implantado.** Nesta fase, ele serve como
 documentação executável da infraestrutura-alvo e pode ser validado
@@ -41,6 +45,12 @@ localmente com o AWS SAM CLI, sem provisionar nenhum recurso real.
   conectar um canal depende de decidir quem deve ser notificado,
   responsabilidade institucional fora do escopo do código (ver
   [docs/phase-4.2-plan.md](../../docs/phase-4.2-plan.md)).
+- Não limita por usuário ou por IP individual — o `ThrottleSettings` do
+  API Gateway é por rota/estágio (granularidade grosseira), não por
+  quem está fazendo a requisição; ver
+  [ADR-0013](../../docs/decisions/0013-rate-limiting-api-gateway.md).
+  Como todo o resto de `infra/`, só tem efeito depois de uma
+  implantação real.
 
 ## Validação local (sem implantar)
 

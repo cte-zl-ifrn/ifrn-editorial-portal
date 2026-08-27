@@ -68,6 +68,22 @@ Resources:
           - POST
         AllowHeaders:
           - content-type
+      # Rate limiting nativo do API Gateway (Fase 4.3, ver ADR-0013) —
+      # sem estado compartilhado, sem banco de dados. Limiares são um
+      # ponto de partida generoso para o volume esperado do MVP, não um
+      # SLA — ajustar com dados reais de uso após a primeira implantação.
+      # `RouteSettings` só tem efeito sobre uma rota que exista de fato
+      # na API — por isso `POST /api/submissions` também é registrada
+      # como um evento explícito em `PortalFunction`, além do
+      # `ANY /{proxy+}` que já cobria todas as rotas (uma rota mais
+      # específica tem prioridade sobre o catch-all).
+      DefaultRouteSettings:
+        ThrottlingRateLimit: 20
+        ThrottlingBurstLimit: 40
+      RouteSettings:
+        "POST /api/submissions":
+          ThrottlingRateLimit: 2
+          ThrottlingBurstLimit: 5
 
   PortalFunction:
     Type: AWS::Serverless::Function
@@ -88,6 +104,16 @@ Resources:
             ApiId: !Ref PortalApi
             Path: /{proxy+}
             Method: ANY
+        # Rota explícita, além do catch-all acima, só para que o
+        # RouteSettings de POST /api/submissions (rate limit mais
+        # restritivo, ver PortalApi) tenha uma rota de verdade para
+        # sobrescrever — ambas apontam para a mesma função.
+        SubmissionsApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PortalApi
+            Path: /api/submissions
+            Method: POST
 
   # Alarmes básicos de operação (Fase 4.2, ver docs/phase-4.2-plan.md).
   # Definidos aqui, sem canal de notificação real conectado (SNS/e-mail)

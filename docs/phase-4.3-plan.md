@@ -45,17 +45,35 @@ nem banco de dados — ver [ADR-0013](decisions/0013-rate-limiting-api-gateway.m
 4. `infra/sam/README.md` e `docs/api/openapi.yaml` atualizados
    (documentar o `429` como resposta possível).
 
+**Entregue** (nomes reais): `infra/sam/template.yaml` —
+`PortalApi.DefaultRouteSettings` (20 req/s, burst 40) e
+`RouteSettings["POST /api/submissions"]` (2 req/s, burst 5); nova rota
+explícita `SubmissionsApi` em `PortalFunction.Events` (necessária para
+o `RouteSettings` ter uma rota real para sobrescrever, além do
+`ANY /{proxy+}` já existente). `backend/src/app.py` —
+`request_size_limit_middleware`, rejeitando `POST /api/submissions`
+acima de `max_submission_body_bytes` com `413`.
+`backend/src/config.py:max_submission_body_bytes` (padrão 8 MB).
+`backend/tests/test_submissions.py` — 1 teste novo.
+`docs/api/openapi.yaml` — `413`/`429` documentados em
+`POST /api/submissions`.
+
 ## Critérios de aceite / definição de pronto
 
-- [ ] `infra/sam/template.yaml` define `ThrottleSettings` distintos
+- [x] `infra/sam/template.yaml` define `ThrottleSettings` distintos
       para `POST /api/submissions` e para as rotas de leitura;
-      `sam validate` continua válido.
-- [ ] Uma requisição de submissão cujo corpo excede o teto configurado
+      validado estruturalmente (mesma ressalva das Fases 4.1/4.2 — AWS
+      SAM CLI não disponível neste ambiente de desenvolvimento).
+- [x] Uma requisição de submissão cujo corpo excede o teto configurado
       é rejeitada, com erro claro, antes de qualquer chamada ao
-      GitHub.
-- [ ] `docs/api/openapi.yaml` documenta `429` como resposta possível
-      em `POST /api/submissions`.
-- [ ] `ruff check` e `pytest` passam; nenhuma regressão.
+      GitHub (`test_submission_rejects_oversized_body_before_touching_github`
+      — confirma zero chamadas às rotas de instalação/conteúdo do
+      GitHub).
+- [x] `docs/api/openapi.yaml` documenta `429` (e também `413`, que não
+      estava no escopo original mas é a resposta real do novo
+      middleware) como respostas possíveis em `POST /api/submissions`.
+- [x] `ruff check` e `pytest` passam; nenhuma regressão — 74 testes no
+      total no backend (73 + 1 novo).
 
 ## Riscos técnicos e decisões de arquitetura
 
@@ -68,14 +86,51 @@ por usuário/IP).
   usuários simultâneos) — valores exatos ficam documentados no
   template, revisáveis sem exigir nova ADR.
 
+## Decisões tomadas durante a implementação
+
+- **`ThrottleSettings` por rota exige uma rota real, não só uma
+  referência em `RouteSettings`**: a API tinha só um catch-all
+  (`ANY /{proxy+}`), então o `RouteSettings["POST /api/submissions"]`
+  não teria nada a que se aplicar. Solução: adicionar
+  `POST /api/submissions` como uma rota explícita, além do catch-all —
+  API Gateway prioriza a rota mais específica, então isso não muda o
+  comportamento de nenhuma outra rota.
+- **`413` documentado além do `429` original**: o plano só previa
+  documentar `429` (do API Gateway); o teto de tamanho do corpo
+  (`request_size_limit_middleware`) é uma resposta do próprio backend,
+  então `413` também precisou entrar na definição de pronto e no
+  OpenAPI.
+- **`max_submission_body_bytes` (8 MB) escolhido por um motivo
+  concreto, não arbitrário**: é o maior valor que ainda fica abaixo do
+  limite real de payload do próprio API Gateway HTTP API (10 MB fixo,
+  não configurável). Ao verificar isso, ficou claro que
+  `max_file_size_bytes` (20 MB, Fase 3.2) já permite configurar um
+  asset individual maior do que o API Gateway jamais entregaria ao
+  Lambda em produção — um risco pré-existente, não introduzido nem
+  corrigido nesta fase (corrigir exigiria revisitar os limites da Fase
+  3.2, fora de escopo aqui).
+- **Verificação por `Content-Length`, não por leitura do corpo**: mais
+  barato (não exige buffer o corpo inteiro só para rejeitá-lo) e
+  suficiente para o cenário real (um cliente HTTP normal sempre envia
+  esse cabeçalho para um corpo JSON não streamado). Uma requisição
+  sem `Content-Length` (ex.: `Transfer-Encoding: chunked`) não é
+  bloqueada por este middleware — cenário não utilizado pelo frontend
+  hoje.
+
 ## Roteiro de validação manual (Fase 4.3.5)
 
-A ser executado e registrado quando a implementação estiver concluída:
-
-- [ ] Enviar uma submissão com payload acima do teto configurado →
-      rejeitada antes de qualquer chamada ao GitHub.
-- [ ] `sam validate --template infra/sam/template.yaml` com os novos
-      `ThrottleSettings`.
+- [x] Enviar uma submissão com payload acima do teto configurado →
+      rejeitada antes de qualquer chamada ao GitHub. Confirmado via
+      teste automatizado
+      (`test_submission_rejects_oversized_body_before_touching_github`,
+      com o teto reduzido para tornar o teste rápido — o comportamento
+      é idêntico ao do valor real de produção).
+- [x] `sam validate --template infra/sam/template.yaml` com os novos
+      `ThrottleSettings` — mesma ressalva das Fases 4.1/4.2: AWS SAM
+      CLI não disponível neste ambiente; validado estruturalmente com
+      um parser YAML que reconhece as tags curtas do CloudFormation.
+      Recomendo `sam validate` de verdade antes de qualquer implantação
+      real.
 
 ## Dependências
 

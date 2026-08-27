@@ -72,6 +72,17 @@ class Settings(BaseSettings):
     max_image_size_bytes: int = 5_000_000
     max_file_size_bytes: int = 20_000_000
 
+    # Corpo da requisição de submissão como um todo (Fase 4.3, ADR-0013)
+    # — não substitui os limites por asset acima, é um teto adicional
+    # sobre o payload inteiro (documento + todos os assets em base64),
+    # verificado antes de qualquer parsing. 8 MB por ficar deliberadamente
+    # abaixo do limite real de payload do API Gateway HTTP API (10 MB) —
+    # uma submissão com um asset no limite de max_file_size_bytes (20 MB)
+    # já excederia esse teto muito antes de chegar à validação de asset;
+    # risco pré-existente da Fase 3.2, não corrigido nesta fase (fora de
+    # escopo — ver docs/phase-4.3-plan.md).
+    max_submission_body_bytes: int = 8_000_000
+
     @field_validator("github_app_private_key")
     @classmethod
     def _normalize_private_key(cls, value: str) -> str:

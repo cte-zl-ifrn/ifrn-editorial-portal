@@ -1,4 +1,4 @@
-# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1 / Fase 3.2 / Fase 4.1 / Fase 4.2)
+# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1 / Fase 3.2 / Fase 4.1 / Fase 4.2 / Fase 4.3)
 
 Backend em Python (FastAPI), pensado para rodar em AWS Lambda por trás de
 um API Gateway HTTP API (ver
@@ -9,8 +9,9 @@ Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
 [docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md),
 [docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md),
 [docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md),
-[docs/phase-4.1-plan.md](../docs/phase-4.1-plan.md) e
-[docs/phase-4.2-plan.md](../docs/phase-4.2-plan.md). Contrato completo da
+[docs/phase-4.1-plan.md](../docs/phase-4.1-plan.md),
+[docs/phase-4.2-plan.md](../docs/phase-4.2-plan.md) e
+[docs/phase-4.3-plan.md](../docs/phase-4.3-plan.md). Contrato completo da
 API: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Por que FastAPI
@@ -139,6 +140,20 @@ testes que não precisam validar o fluxo OAuth completo.
 - `infra/sam/template.yaml` define dois alarmes do CloudWatch (taxa de
   erro e latência da função Lambda, usando as métricas nativas
   `AWS/Lambda`) — sem canal de notificação real conectado nesta fase.
+
+## Rate limiting e proteção contra abuso (Fase 4.3)
+
+- O rate limiting em si é feito pelo throttling nativo do API Gateway
+  HTTP API (`ThrottleSettings` em `infra/sam/template.yaml`, ver
+  [ADR-0013](../docs/decisions/0013-rate-limiting-api-gateway.md)), não
+  por código de aplicação — só tem efeito depois de uma implantação
+  real; sem uma, o backend não impõe nenhum limite de taxa por si só.
+- `request_size_limit_middleware` (`src/app.py`) rejeita, com `413`
+  (`payload_too_large`) e antes de qualquer parsing, uma requisição
+  `POST /api/submissions` cujo `Content-Length` excede
+  `max_submission_body_bytes` (`src/config.py`, padrão 8 MB) — um teto
+  sobre o payload inteiro, separado dos limites por asset individual já
+  existentes (`max_image_size_bytes`/`max_file_size_bytes`).
 
 ## Escrita no central-ajuda (Fase 3.1 / Fase 3.2)
 

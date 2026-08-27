@@ -1,4 +1,5 @@
 import base64
+from unittest.mock import patch
 
 import respx
 from conftest import set_session_cookie
@@ -311,3 +312,21 @@ def test_submission_fails_when_asset_write_fails_and_never_opens_a_pull_request(
     assert response.status_code == 502
     assert response.json()["error"] == "github_communication_error"
     assert pr_route.call_count == 0
+
+
+@respx.mock
+def test_submission_rejects_oversized_body_before_touching_github(client, settings):
+    """Fase 4.3, ADR-0013: teto sobre o corpo inteiro da requisição,
+    separado dos limites por asset já existentes."""
+    set_session_cookie(client, settings, authorized=True, permission="write")
+    token_route = _mock_installation_token(respx)
+    content_route = _mock_current_content(respx)
+
+    tiny_cap_settings = settings.model_copy(update={"max_submission_body_bytes": 10})
+    with patch("src.app.get_settings", return_value=tiny_cap_settings):
+        response = client.post("/api/submissions", json=_payload())
+
+    assert response.status_code == 413
+    assert response.json()["error"] == "payload_too_large"
+    assert token_route.call_count == 0
+    assert content_route.call_count == 0

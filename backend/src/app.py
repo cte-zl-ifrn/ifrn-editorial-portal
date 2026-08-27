@@ -41,6 +41,35 @@ def create_app() -> FastAPI:
     )
 
     @app.middleware("http")
+    async def request_size_limit_middleware(request: Request, call_next):
+        """Teto sobre o corpo inteiro de uma submissão (Fase 4.3,
+        ADR-0013) — não substitui os limites por asset já existentes
+        (`assets/validation.py`), é uma proteção adicional contra um
+        payload anormalmente grande, verificada antes de qualquer
+        parsing. Registrado antes de `access_log_middleware` (mais
+        interno) para que uma rejeição aqui ainda apareça no log de
+        acesso, como qualquer outra resposta."""
+        if request.method == "POST" and request.url.path == "/api/submissions":
+            content_length = request.headers.get("content-length")
+            if content_length is not None:
+                try:
+                    body_size = int(content_length)
+                except ValueError:
+                    body_size = None
+                if body_size is not None and body_size > get_settings().max_submission_body_bytes:
+                    from .logging import get_correlation_id
+
+                    return JSONResponse(
+                        status_code=413,
+                        content={
+                            "error": "payload_too_large",
+                            "message": "O corpo da requisição excede o tamanho máximo permitido.",
+                            "correlation_id": get_correlation_id(),
+                        },
+                    )
+        return await call_next(request)
+
+    @app.middleware("http")
     async def access_log_middleware(request: Request, call_next):
         """Registro de acesso por requisição (Fase 4.2) — uma linha
         estruturada ao final de toda requisição, mesmo em caso de exceção
