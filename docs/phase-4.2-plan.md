@@ -57,16 +57,37 @@ decisão de arquitetura nova (a escolha de CloudWatch já é da
    presentes; nenhum dado sensível).
 5. `backend/README.md` e `infra/sam/README.md` atualizados.
 
+**Entregue** (nomes reais): `backend/src/app.py` —
+`correlation_id_middleware` renomeado para `access_log_middleware`,
+agora com `try/finally` (loga mesmo em exceção não tratada), emitindo
+`request.completed` (método, rota, status, duração,
+`correlation_id`) e as métricas `RequestCount`/`ErrorCount`;
+`backend/src/logging.py:log_metric` (emissor EMF genérico, escreve
+direto em `stdout`); `backend/src/handlers/submissions.py` (métrica
+`SubmissionCompleted` após sucesso); `backend/tests/test_observability.py`
+(7 testes novos); `infra/sam/template.yaml`
+(`FunctionErrorRateAlarm`, `FunctionLatencyAlarm`); `backend/README.md`
+e `infra/sam/README.md` atualizados.
+
 ## Critérios de aceite / definição de pronto
 
-- [ ] Toda requisição produz uma linha de log estruturada com rota,
-      status, duração e `correlation_id`.
-- [ ] Nenhum dado sensível (segredo, cookie, token, conteúdo de
-      documento) aparece nesse registro — mesma garantia já validada
-      para os logs existentes.
-- [ ] `infra/sam/template.yaml` define ao menos os dois alarmes
-      descritos acima; `sam validate` continua válido.
-- [ ] `ruff check` e `pytest` passam; nenhuma regressão.
+- [x] Toda requisição produz uma linha de log estruturada com rota,
+      status, duração e `correlation_id`
+      (`test_every_request_produces_a_completed_access_log_line`,
+      `test_access_log_covers_errors_too` — inclusive para rotas
+      inexistentes/erros).
+- [x] Nenhum dado sensível (segredo, cookie, token, conteúdo de
+      documento) aparece nesse registro — comprovado estruturalmente:
+      só quatro campos fixos são logados, nunca dados arbitrários da
+      requisição
+      (`test_access_log_never_includes_extra_fields_beyond_the_safe_set`).
+- [x] `infra/sam/template.yaml` define ao menos os dois alarmes
+      descritos acima; validado estruturalmente (mesma ressalva da Fase
+      4.1 — AWS SAM CLI não disponível neste ambiente de
+      desenvolvimento; recomendo `sam validate` de verdade antes de
+      qualquer implantação real).
+- [x] `ruff check` e `pytest` passam; nenhuma regressão — 73 testes no
+      total no backend (66 + 7 novos).
 
 ## Riscos técnicos e decisões de arquitetura
 
@@ -82,17 +103,54 @@ definia CloudWatch como o backend de observabilidade do projeto.
   um canal real depende de decidir quem deve ser notificado,
   responsabilidade institucional fora do escopo do código.
 
+## Decisões tomadas durante a implementação
+
+- **Alarmes usam as métricas nativas `AWS/Lambda`** (`Errors`,
+  `Duration`, dimensionadas por `FunctionName`), não as métricas
+  customizadas EMF (`RequestCount`/`ErrorCount`) — mais simples (sem
+  precisar de um filtro de métrica sobre um namespace customizado) e
+  já é exatamente o que o plano original pedia ("taxa de erro **da
+  função Lambda**"). As métricas EMF continuam existindo, para consulta
+  manual e dashboards futuros, mas não alimentam os alarmes desta fase.
+- **`_SENSITIVE_KEYS` (`backend/src/logging.py`) não precisou de
+  nenhuma alteração**: os novos campos logados (`method`, `path`,
+  `status_code`, `duration_ms`) não são sensíveis, e a rota nunca
+  carrega parâmetros hoje (nenhum handler tem path parameter — só rotas
+  estáticas), então não há risco de um valor sensível aparecer dentro
+  de `path`.
+- O middleware existente (`correlation_id_middleware`) foi renomeado
+  para `access_log_middleware`, já que passou a ser o dono do registro
+  de acesso, não só do `correlation_id` — reflete melhor sua
+  responsabilidade atual.
+- O registro de acesso usa `try/finally` (não só um log no início e
+  outro no fim) para garantir que uma exceção não tratada por nenhum
+  `exception_handler` ainda produza a linha `request.completed` (com
+  status 500 e a duração até a falha) — sem isso, o cenário mais
+  importante de se observar (um bug real) seria justamente o que não
+  aparece no log de acesso.
+
 ## Roteiro de validação manual (Fase 4.2.5)
 
-A ser executado e registrado quando a implementação estiver concluída:
-
-- [ ] Rodar o backend localmente, fazer algumas requisições, e
+- [x] Rodar o backend localmente, fazer algumas requisições, e
       confirmar visualmente que o log estruturado inclui rota, status
-      e duração.
-- [ ] Provocar um erro (ex.: rota inexistente) e confirmar que o
-      registro de acesso também cobre esse caso.
-- [ ] `sam validate --template infra/sam/template.yaml` com os novos
-      alarmes.
+      e duração. Confirmado diretamente (via `TestClient`, sem exigir
+      credenciais reais — `GET /health`):
+      ```json
+      {"level": "INFO", "logger": "src.app", "message": "request.completed", "correlation_id": "46e4d61a...", "method": "GET", "path": "/health", "status_code": 200, "duration_ms": 8.25}
+      {"_aws": {...}, "Route": "/health", "RequestCount": 1}
+      ```
+- [x] Provocar um erro (ex.: rota inexistente) e confirmar que o
+      registro de acesso também cobre esse caso. Confirmado (`GET
+      /rota-que-nao-existe` → 404):
+      ```json
+      {"level": "INFO", "logger": "src.app", "message": "request.completed", ..., "status_code": 404, "duration_ms": 9.41}
+      {"_aws": {...}, "Route": "/rota-que-nao-existe", "StatusCode": "404", "ErrorCount": 1}
+      ```
+- [x] `sam validate --template infra/sam/template.yaml` com os novos
+      alarmes — mesma ressalva da Fase 4.1: AWS SAM CLI não disponível
+      neste ambiente; validado estruturalmente com um parser YAML que
+      reconhece as tags curtas do CloudFormation. Recomendo `sam
+      validate` de verdade antes de qualquer implantação real.
 
 ## Dependências
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +16,7 @@ from .logging import (
     configure_logging,
     get_logger,
     log_event,
+    log_metric,
     new_correlation_id,
     set_correlation_id,
 )
@@ -38,13 +41,36 @@ def create_app() -> FastAPI:
     )
 
     @app.middleware("http")
-    async def correlation_id_middleware(request: Request, call_next):
+    async def access_log_middleware(request: Request, call_next):
+        """Registro de acesso por requisição (Fase 4.2) — uma linha
+        estruturada ao final de toda requisição, mesmo em caso de exceção
+        não tratada (por isso o `try/finally`: sem ele, um bug genuíno no
+        handler faria a requisição nunca aparecer no log de acesso)."""
         correlation_id = request.headers.get("x-correlation-id", new_correlation_id())
         set_correlation_id(correlation_id)
-        log_event(logger, "request.received", path=request.url.path, method=request.method)
-        response = await call_next(request)
-        response.headers["X-Correlation-Id"] = correlation_id
-        return response
+        started_at = time.perf_counter()
+        status_code = 500
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            response.headers["X-Correlation-Id"] = correlation_id
+            return response
+        finally:
+            duration_ms = round((time.perf_counter() - started_at) * 1000, 2)
+            log_event(
+                logger,
+                "request.completed",
+                method=request.method,
+                path=request.url.path,
+                status_code=status_code,
+                duration_ms=duration_ms,
+            )
+            log_metric("RequestCount", dimensions={"Route": request.url.path})
+            if status_code >= 400:
+                log_metric(
+                    "ErrorCount",
+                    dimensions={"Route": request.url.path, "StatusCode": str(status_code)},
+                )
 
     @app.exception_handler(PortalError)
     async def portal_error_handler(request: Request, exc: PortalError) -> JSONResponse:

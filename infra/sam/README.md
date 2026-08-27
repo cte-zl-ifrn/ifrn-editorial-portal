@@ -1,4 +1,4 @@
-# Template SAM — Fase 1 / Fase 4.1
+# Template SAM — Fase 1 / Fase 4.1 / Fase 4.2
 
 `template.yaml` descreve a infraestrutura mínima prevista em
 [ADR-0005](../../docs/decisions/0005-backend-lambda-api-gateway.md):
@@ -6,7 +6,11 @@ um API Gateway HTTP API na frente de uma função Lambda que executa o
 backend (`backend/src/lambda_handler.py`). Desde a Fase 4.1, a função
 também recebe o ARN do segredo do Secrets Manager como variável de
 ambiente (`SECRETS_MANAGER_SECRET_ARN`) — ver
-[ADR-0012](../../docs/decisions/0012-segredos-secrets-manager.md).
+[ADR-0012](../../docs/decisions/0012-segredos-secrets-manager.md). Desde
+a Fase 4.2, o template também define dois alarmes do CloudWatch
+(`FunctionErrorRateAlarm`, `FunctionLatencyAlarm`) sobre as métricas
+nativas `AWS/Lambda` da função — ver
+[docs/phase-4.2-plan.md](../../docs/phase-4.2-plan.md).
 
 **Este template não foi implantado.** Nesta fase, ele serve como
 documentação executável da infraestrutura-alvo e pode ser validado
@@ -31,6 +35,12 @@ localmente com o AWS SAM CLI, sem provisionar nenhum recurso real.
 - Não configura domínio customizado, WAF, DynamoDB, S3 ou qualquer serviço
   listado como "futuro, somente se necessário" em
   `docs/initial-architecture.md`, seção 17.
+- Não conecta os alarmes do CloudWatch a nenhum canal de notificação
+  real (SNS, e-mail) — os alarmes existem no template, prontos para
+  avaliar as métricas, mas ninguém é avisado automaticamente ainda;
+  conectar um canal depende de decidir quem deve ser notificado,
+  responsabilidade institucional fora do escopo do código (ver
+  [docs/phase-4.2-plan.md](../../docs/phase-4.2-plan.md)).
 
 ## Validação local (sem implantar)
 

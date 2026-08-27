@@ -89,6 +89,47 @@ Resources:
             Path: /{proxy+}
             Method: ANY
 
+  # Alarmes básicos de operação (Fase 4.2, ver docs/phase-4.2-plan.md).
+  # Definidos aqui, sem canal de notificação real conectado (SNS/e-mail)
+  # — conectar um canal depende de decidir quem deve ser notificado,
+  # responsabilidade institucional fora do escopo do código. Limiares
+  # abaixo são um ponto de partida, não um SLA — ajustar com dados reais
+  # de uso após a primeira implantação.
+  FunctionErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: >
+        Erros da função Lambda do backend acima do esperado.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PortalFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  FunctionLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: >
+        Duração (latência) média da função Lambda do backend acima do
+        esperado.
+      Namespace: AWS/Lambda
+      MetricName: Duration
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PortalFunction
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 3000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
 Outputs:
   ApiUrl:
     Description: URL base da API Gateway HTTP API

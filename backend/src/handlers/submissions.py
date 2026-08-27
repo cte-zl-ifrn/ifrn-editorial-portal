@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from ..dependencies import AuthorizedSessionDep, HttpClientDep, SettingsDep
+from ..logging import log_metric
 from ..models import SubmissionRequest, SubmissionResponse
 from ..services.submission_service import submit_document
 
@@ -19,4 +20,6 @@ def create_submission(
     `AuthorizedSessionDep` garante sessão válida e usuário autorizado
     antes de qualquer chamada de escrita ao GitHub.
     """
-    return submit_document(client, settings, request, session)
+    response = submit_document(client, settings, request, session)
+    log_metric("SubmissionCompleted")
+    return response

@@ -1,4 +1,4 @@
-# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1 / Fase 3.2 / Fase 4.1)
+# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1 / Fase 3.2 / Fase 4.1 / Fase 4.2)
 
 Backend em Python (FastAPI), pensado para rodar em AWS Lambda por trás de
 um API Gateway HTTP API (ver
@@ -8,8 +8,9 @@ executável localmente com `uvicorn` sem qualquer dependência de AWS.
 Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
 [docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md),
 [docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md),
-[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md) e
-[docs/phase-4.1-plan.md](../docs/phase-4.1-plan.md). Contrato completo da
+[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md),
+[docs/phase-4.1-plan.md](../docs/phase-4.1-plan.md) e
+[docs/phase-4.2-plan.md](../docs/phase-4.2-plan.md). Contrato completo da
 API: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Por que FastAPI
@@ -118,6 +119,26 @@ testes que não precisam validar o fluxo OAuth completo.
   está presente, interrompe a inicialização — nunca cai silenciosamente
   nos valores padrão inseguros. Nenhum segredo aparece em logs (ver
   `src/logging.py`, que filtra campos sensíveis por nome).
+
+## Observabilidade (Fase 4.2)
+
+- Um middleware (`access_log_middleware`, `src/app.py`) registra, ao
+  final de toda requisição — inclusive em caso de exceção não tratada
+  — uma linha `request.completed` com método, rota, status HTTP,
+  duração em milissegundos e `correlation_id`. Só esses quatro campos
+  são logados: nenhum dado da requisição em si (corpo, cookies,
+  cabeçalhos) é incluído.
+- O mesmo middleware emite duas métricas em Embedded Metric Format
+  (EMF) via `log_metric` (`src/logging.py`): `RequestCount` (toda
+  requisição, dimensionada por rota) e `ErrorCount` (só quando
+  `status_code >= 400`, dimensionada por rota e status). O handler de
+  submissões (`src/handlers/submissions.py`) emite `SubmissionCompleted`
+  após uma submissão bem-sucedida. EMF é escrito direto em `stdout`
+  (fora do `logging` padrão) — é assim que o CloudWatch extrai métricas
+  de uma linha de log sem uma chamada `PutMetricData` separada.
+- `infra/sam/template.yaml` define dois alarmes do CloudWatch (taxa de
+  erro e latência da função Lambda, usando as métricas nativas
+  `AWS/Lambda`) — sem canal de notificação real conectado nesta fase.
 
 ## Escrita no central-ajuda (Fase 3.1 / Fase 3.2)
 
