@@ -23,11 +23,13 @@ consultar os detalhes.
 > em seis sub-fases em [docs/phase-4-plan.md](phase-4-plan.md) (ver
 > [issue #13](https://github.com/cte-zl-ifrn/ifrn-editorial-portal/issues/13)).
 > **Fase 4.1 (segredos via AWS Secrets Manager), Fase 4.2
-> (observabilidade via CloudWatch) e Fase 4.3 (rate limiting e proteção
-> contra abuso) implementadas** — ver
+> (observabilidade via CloudWatch), Fase 4.3 (rate limiting e proteção
+> contra abuso) e Fase 4.4 (segurança da aplicação — cabeçalhos HTTP,
+> CSRF, auditoria de permissões) implementadas** — ver
 > [docs/phase-4.1-plan.md](phase-4.1-plan.md),
-> [docs/phase-4.2-plan.md](phase-4.2-plan.md) e
-> [docs/phase-4.3-plan.md](phase-4.3-plan.md); pendentes apenas de uma
+> [docs/phase-4.2-plan.md](phase-4.2-plan.md),
+> [docs/phase-4.3-plan.md](phase-4.3-plan.md) e
+> [docs/phase-4.4-plan.md](phase-4.4-plan.md); pendentes apenas de uma
 > implantação real (fora do escopo de qualquer fase até aqui). Ver
 > [docs/phase-1-plan.md](phase-1-plan.md) e
 > [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)

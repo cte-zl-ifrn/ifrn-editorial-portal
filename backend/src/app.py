@@ -24,6 +24,29 @@ from .logging import (
 configure_logging()
 logger = get_logger(__name__)
 
+# Fase 4.4, ADR-0014 — cabeçalho customizado exigido em toda requisição
+# que altera estado. Um cookie com SameSite=None (necessário em produção,
+# frontend e backend em origens diferentes) perde a proteção nativa do
+# navegador contra CSRF; um formulário/imagem cross-site não consegue
+# definir um cabeçalho customizado sem disparar um preflight CORS, que a
+# política de CORS já restrita (uma única origem permitida) rejeita.
+_PORTAL_CLIENT_HEADER = "x-portal-client"
+_STATE_CHANGING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+# Fase 4.4 — cabeçalhos de segurança HTTP em toda resposta. Este backend
+# é uma API somente JSON (a UI do Tiptap roda inteiramente no frontend,
+# em outra origem — este CSP não tem nenhum efeito sobre ela). Exceção:
+# os paths de documentação automática do FastAPI (`/docs`, `/redoc`)
+# carregam script/estilo de um CDN externo e quebrariam com
+# `default-src 'none'` — mantidos fora do CSP, mas ainda cobertos pelos
+# demais cabeçalhos.
+_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+}
+_CSP_EXEMPT_PATHS = {"/docs", "/redoc", "/openapi.json"}
+
 
 def create_app() -> FastAPI:
     settings = get_settings()
@@ -39,6 +62,26 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def csrf_header_middleware(request: Request, call_next):
+        """Ver ADR-0014: rejeita com `403`, mesmo com sessão válida, toda
+        requisição que altera estado e não envia `X-Portal-Client`."""
+        if (
+            request.method in _STATE_CHANGING_METHODS
+            and _PORTAL_CLIENT_HEADER not in request.headers
+        ):
+            from .logging import get_correlation_id
+
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "error": "missing_csrf_header",
+                    "message": "Cabeçalho X-Portal-Client obrigatório para esta requisição.",
+                    "correlation_id": get_correlation_id(),
+                },
+            )
+        return await call_next(request)
 
     @app.middleware("http")
     async def request_size_limit_middleware(request: Request, call_next):
@@ -101,6 +144,19 @@ def create_app() -> FastAPI:
                     dimensions={"Route": request.url.path, "StatusCode": str(status_code)},
                 )
 
+    @app.middleware("http")
+    async def security_headers_middleware(request: Request, call_next):
+        """Ver comentário de `_SECURITY_HEADERS`/`_CSP_EXEMPT_PATHS` acima.
+        Registrado por último (mais externo) para que os cabeçalhos sejam
+        aplicados a toda resposta, inclusive as rejeições antecipadas dos
+        outros middlewares (403 de CSRF, 413 de tamanho)."""
+        response = await call_next(request)
+        for header, value in _SECURITY_HEADERS.items():
+            response.headers[header] = value
+        if request.url.path not in _CSP_EXEMPT_PATHS:
+            response.headers["Content-Security-Policy"] = "default-src 'none'"
+        return response
+
     @app.exception_handler(PortalError)
     async def portal_error_handler(request: Request, exc: PortalError) -> JSONResponse:
         from .logging import get_correlation_id
@@ -133,6 +189,34 @@ def create_app() -> FastAPI:
             content={
                 "error": "invalid_request",
                 "message": "Requisição inválida.",
+                "correlation_id": get_correlation_id(),
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        """Fase 4.4: sem isto, um bug genuíno (nenhuma exceção de domínio
+        conhecida) escaparia para o handler padrão do Starlette, que
+        retorna texto plano (`Internal Server Error`), não o envelope
+        `{error, message, correlation_id}` usado em toda outra resposta de
+        erro desta API — inconsistente, ainda que não vaze detalhe interno
+        (debug=False por padrão). Isto garante a mesma garantia de não
+        vazamento também para o caso não antecipado, não só para os erros
+        de domínio já mapeados."""
+        from .logging import get_correlation_id
+
+        log_event(
+            logger,
+            "request.error",
+            path=request.url.path,
+            error="internal_error",
+            status_code=500,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "internal_error",
+                "message": "Erro interno.",
                 "correlation_id": get_correlation_id(),
             },
         )

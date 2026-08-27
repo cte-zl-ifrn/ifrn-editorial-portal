@@ -15,8 +15,15 @@ info:
     backend (MIME, assinatura, tamanho, nome — ver ADR-0007), conforme
     docs/phase-3.1-plan.md e docs/phase-3.2-plan.md. Fase 4.3: teto sobre
     o corpo inteiro da submissão (413) e rate limiting nativo do API
-    Gateway (429), ver ADR-0013.
-  version: "0.5.0"
+    Gateway (429), ver ADR-0013. Fase 4.4: toda resposta inclui
+    cabeçalhos de segurança HTTP (Content-Security-Policy,
+    X-Content-Type-Options, X-Frame-Options, Referrer-Policy); toda
+    requisição POST/PUT/PATCH/DELETE exige o cabeçalho `X-Portal-Client`
+    (403 se ausente, mesmo com sessão válida — proteção contra CSRF, ver
+    ADR-0014); qualquer erro não mapeado retorna 500 com o mesmo envelope
+    `{error: "internal_error", message, correlation_id}`, nunca detalhe
+    interno.
+  version: "0.6.0"
 servers:
   - url: http://localhost:8000
     description: Backend local (desenvolvimento)
@@ -115,11 +122,24 @@ paths:
     post:
       tags: [auth]
       summary: Encerra a sessão do portal
-      description: Idempotente — chamar sem sessão ativa não é erro.
+      description: >-
+        Idempotente — chamar sem sessão ativa não é erro. Exige o
+        cabeçalho `X-Portal-Client` (Fase 4.4, ADR-0014), como toda
+        requisição que altera estado.
       security: []
       responses:
         "204":
           description: Sessão encerrada (ou já inexistente)
+        "403":
+          description: >-
+            Cabeçalho `X-Portal-Client` ausente (proteção contra CSRF,
+            ver ADR-0014).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "missing_csrf_header"
 
   /api/me:
     get:
@@ -266,11 +286,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
-          description: Usuário autenticado, mas não autorizado
+          description: >-
+            Usuário autenticado, mas não autorizado, ou cabeçalho
+            `X-Portal-Client` ausente (proteção contra CSRF, Fase 4.4,
+            ver ADR-0014).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                unauthorized:
+                  value: { error: "unauthorized" }
+                missing_csrf_header:
+                  value: { error: "missing_csrf_header" }
         "409":
           description: >-
             Conflito de edição concorrente — o documento mudou no

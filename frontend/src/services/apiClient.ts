@@ -10,6 +10,11 @@ export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? 'http:/
  * Envia sempre `credentials: "include"` para que o cookie de sessão
  * HttpOnly criado pelo backend seja enviado nas requisições — ver
  * docs/architecture/authentication-flow.md.
+ *
+ * Também envia sempre `X-Portal-Client` (Fase 4.4, ADR-0014): o backend
+ * exige esse cabeçalho em toda requisição que altera estado, como
+ * proteção contra CSRF (o cookie de sessão usa `SameSite=None` em
+ * produção, já que frontend e backend vivem em origens diferentes).
  */
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -17,6 +22,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     credentials: 'include',
     headers: {
       Accept: 'application/json',
+      'X-Portal-Client': '1',
       ...init.headers,
     },
   })

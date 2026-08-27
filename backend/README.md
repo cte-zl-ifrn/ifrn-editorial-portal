@@ -1,4 +1,4 @@
-# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1 / Fase 3.2 / Fase 4.1 / Fase 4.2 / Fase 4.3)
+# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1 / Fase 3.2 / Fase 4.1 / Fase 4.2 / Fase 4.3 / Fase 4.4)
 
 Backend em Python (FastAPI), pensado para rodar em AWS Lambda por trás de
 um API Gateway HTTP API (ver
@@ -10,8 +10,9 @@ Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
 [docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md),
 [docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md),
 [docs/phase-4.1-plan.md](../docs/phase-4.1-plan.md),
-[docs/phase-4.2-plan.md](../docs/phase-4.2-plan.md) e
-[docs/phase-4.3-plan.md](../docs/phase-4.3-plan.md). Contrato completo da
+[docs/phase-4.2-plan.md](../docs/phase-4.2-plan.md),
+[docs/phase-4.3-plan.md](../docs/phase-4.3-plan.md) e
+[docs/phase-4.4-plan.md](../docs/phase-4.4-plan.md). Contrato completo da
 API: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Por que FastAPI
@@ -154,6 +155,47 @@ testes que não precisam validar o fluxo OAuth completo.
   `max_submission_body_bytes` (`src/config.py`, padrão 8 MB) — um teto
   sobre o payload inteiro, separado dos limites por asset individual já
   existentes (`max_image_size_bytes`/`max_file_size_bytes`).
+
+## Segurança da aplicação (Fase 4.4)
+
+- **Cabeçalhos de segurança**: `security_headers_middleware`
+  (`src/app.py`) adiciona `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY` e `Referrer-Policy: no-referrer` a toda
+  resposta, e `Content-Security-Policy: default-src 'none'` em toda
+  resposta exceto `/docs`/`/redoc` (a UI interativa do FastAPI carrega
+  script/estilo de um CDN externo, incompatível com esse CSP). Este CSP
+  só afeta as respostas deste backend — a UI do Tiptap roda inteiramente
+  no frontend, em outra origem, e não é afetada por ele.
+- **CSRF em requisições autenticadas por cookie** (ver
+  [ADR-0014](../docs/decisions/0014-csrf-cookies-cross-origin.md)):
+  `csrf_header_middleware` rejeita com `403` (`missing_csrf_header`)
+  toda requisição `POST`/`PUT`/`PATCH`/`DELETE` sem o cabeçalho
+  `X-Portal-Client`, mesmo com um cookie de sessão válido. O frontend
+  (`apiClient.ts`) já envia esse cabeçalho em toda chamada.
+- **Erros nunca vazam detalhe interno**: além dos erros de domínio já
+  mapeados (`{error, message, correlation_id}`), um
+  `unhandled_exception_handler` genérico garante a mesma garantia
+  mesmo para uma exceção não antecipada — sem ele, um bug real
+  escaparia para o texto plano padrão do Starlette (`Internal Server
+  Error`), inconsistente com o resto da API (ainda que sem vazar
+  detalhe, já que `debug=False`).
+- **Auditoria de permissões** (verificada via `gh api
+  orgs/cte-zl-ifrn/installations`, 2026-08-27): a GitHub App em uso para
+  escrita (`cte-zl-ifrn-editorial-portal-dev`) tem exatamente
+  `contents: write`, `pull_requests: write`, `metadata: read` — bate
+  com o teto da [ADR-0004](../docs/decisions/0004-integracao-github-app.md),
+  nada a mais (nenhuma permissão de `actions`, `administration`,
+  `secrets`, `workflows` etc.), `repository_selection: selected` (não
+  `all`). A OAuth App não solicita nenhum `scope` no fluxo de
+  autorização (`build_authorize_url`, `src/services/auth_service.py`) —
+  o token do usuário é usado só para identificá-lo (`GET /user`); toda
+  verificação de permissão no repositório e toda escrita usam o token
+  de instalação da GitHub App, nunca o token OAuth do usuário.
+  **Achado, não corrigido nesta fase**: a instalação antiga
+  `ifrn-editorial-portal-dev` (somente leitura, usada até a Fase 3.1,
+  substituída pela acima) continua instalada — superfície residual
+  pequena (só leitura), mas recomendo desinstalá-la se não for mais
+  necessária; decisão institucional, não uma ação de código.
 
 ## Escrita no central-ajuda (Fase 3.1 / Fase 3.2)
 

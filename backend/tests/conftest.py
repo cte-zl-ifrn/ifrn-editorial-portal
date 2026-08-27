@@ -45,6 +45,11 @@ def settings(test_private_key_pem: str) -> Settings:
 def client(settings: Settings):
     app.dependency_overrides[get_settings] = lambda: settings
     with TestClient(app) as test_client:
+        # Espelha o frontend real (`apiClient.ts`), que envia este
+        # cabeçalho em toda chamada (Fase 4.4, ADR-0014) — testes que
+        # querem verificar a rejeição por ausência dele devem removê-lo
+        # explicitamente (`del client.headers["X-Portal-Client"]`).
+        test_client.headers["X-Portal-Client"] = "1"
         yield test_client
     app.dependency_overrides.clear()
 

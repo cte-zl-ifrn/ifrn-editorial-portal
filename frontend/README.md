@@ -1,4 +1,4 @@
-# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 2.2 / Fase 3.1 / Fase 3.2)
+# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 2.2 / Fase 3.1 / Fase 3.2 / Fase 4.4)
 
 Frontend em Vue 3 + TypeScript + Vite (ver
 [ADR-0008](../docs/decisions/0008-frontend-vue-3.md)), publicado como
@@ -7,8 +7,9 @@ build estático (compatível com GitHub Pages).
 Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
 [docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md),
 [docs/phase-2.2-plan.md](../docs/phase-2.2-plan.md),
-[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md) e
-[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md). Contrato completo da
+[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md),
+[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md) e
+[docs/phase-4.4-plan.md](../docs/phase-4.4-plan.md). Contrato completo da
 API consumida: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Estrutura
@@ -107,6 +108,12 @@ cp .env.example .env.local
 (`http://localhost:8000` por padrão). Nenhum segredo é ou deve ser colocado
 em variáveis `VITE_*`: tudo que começa com esse prefixo é embutido no
 bundle público (RNF-21).
+
+`apiFetch` (`src/services/apiClient.ts`) envia sempre `X-Portal-Client:
+1` em toda chamada, além de `credentials: "include"` — o backend exige
+esse cabeçalho em toda requisição que altera estado, como proteção
+contra CSRF (Fase 4.4, ver
+[ADR-0014](../docs/decisions/0014-csrf-cookies-cross-origin.md)).
 
 ## Executando localmente
 
