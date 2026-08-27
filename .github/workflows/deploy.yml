@@ -1,0 +1,103 @@
+name: Deploy
+
+# Fase 4.5, ADR-0015 — build + deploy do backend via AWS SAM, usando
+# GitHub Environments. Ver infra/sam/README.md para os pré-requisitos
+# (segredos AWS, ARNs) e o passo a passo de configuração.
+#
+# `development` pode implantar automaticamente ao fazer merge em main,
+# mas só quando a variável de ambiente DEPLOY_DEVELOPMENT_ENABLED
+# estiver definida como "true" no Environment `development` do
+# repositório — enquanto isso não acontecer, o job é pulado (não
+# falha), para que este workflow não deixe a aba Actions
+# permanentemente vermelha antes de haver credenciais reais
+# configuradas.
+#
+# `production` só roda via workflow_dispatch manual, e o Environment
+# `production` deve ter aprovadores obrigatórios configurados nas
+# configurações do repositório (Settings > Environments > production >
+# Required reviewers) — nenhuma implantação em produção acontece sem
+# uma pessoa aprovar explicitamente na interface do GitHub.
+#
+# Este workflow não foi executado até hoje — existe só como código
+# revisável, na mesma postura de todo o restante de infra/ desde a
+# Fase 1 (nenhum recurso AWS real é criado como efeito de mesclar este
+# código).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: Ambiente de implantação
+        required: true
+        type: choice
+        options:
+          - development
+          - production
+
+concurrency:
+  group: deploy-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-development:
+    name: Deploy (development)
+    if: >-
+      vars.DEPLOY_DEVELOPMENT_ENABLED == 'true' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.stage == 'development'))
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/setup-sam@v2
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: sam build
+        run: sam build --template infra/sam/template.yaml
+
+      - name: sam deploy
+        run: |
+          sam deploy \
+            --stack-name ifrn-editorial-portal-development \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "$(jq -r 'to_entries | map("\(.key)=\"\(.value)\"") | join(" ")' infra/sam/parameters/development.json)"
+
+  deploy-production:
+    name: Deploy (production)
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.stage == 'production'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/setup-sam@v2
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: sam build
+        run: sam build --template infra/sam/template.yaml
+
+      - name: sam deploy
+        run: |
+          sam deploy \
+            --stack-name ifrn-editorial-portal-production \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "$(jq -r 'to_entries | map("\(.key)=\"\(.value)\"") | join(" ")' infra/sam/parameters/production.json)"

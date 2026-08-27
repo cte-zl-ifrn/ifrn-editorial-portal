@@ -1,4 +1,4 @@
-# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1 / Fase 3.2 / Fase 4.1 / Fase 4.2 / Fase 4.3 / Fase 4.4)
+# Backend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 3.1 / Fase 3.2 / Fase 4.1 / Fase 4.2 / Fase 4.3 / Fase 4.4 / Fase 4.5)
 
 Backend em Python (FastAPI), pensado para rodar em AWS Lambda por trás de
 um API Gateway HTTP API (ver
@@ -11,8 +11,9 @@ Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
 [docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md),
 [docs/phase-4.1-plan.md](../docs/phase-4.1-plan.md),
 [docs/phase-4.2-plan.md](../docs/phase-4.2-plan.md),
-[docs/phase-4.3-plan.md](../docs/phase-4.3-plan.md) e
-[docs/phase-4.4-plan.md](../docs/phase-4.4-plan.md). Contrato completo da
+[docs/phase-4.3-plan.md](../docs/phase-4.3-plan.md),
+[docs/phase-4.4-plan.md](../docs/phase-4.4-plan.md) e
+[docs/phase-4.5-plan.md](../docs/phase-4.5-plan.md). Contrato completo da
 API: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Por que FastAPI
@@ -93,12 +94,17 @@ qualquer configuração adicional.
 source .venv/bin/activate
 pytest
 ruff check src tests
+pip-audit -r requirements-dev.txt  # Fase 4.5, ADR-0015
 ```
 
 Toda chamada à API do GitHub é isolada com `respx` (mock de `httpx`) — os
 testes não fazem chamadas de rede nem exigem credenciais reais (RNF-18).
 Sessões são criadas diretamente com `create_session_cookie_value` nos
 testes que não precisam validar o fluxo OAuth completo.
+
+`pip-audit` também roda no CI (`.github/workflows/ci.yml`), complementando
+o Dependabot já configurado — captura vulnerabilidades conhecidas no
+momento do PR, não só na próxima execução agendada do Dependabot.
 
 ## Sessão e segredos
 

@@ -24,13 +24,18 @@ consultar os detalhes.
 > [issue #13](https://github.com/cte-zl-ifrn/ifrn-editorial-portal/issues/13)).
 > **Fase 4.1 (segredos via AWS Secrets Manager), Fase 4.2
 > (observabilidade via CloudWatch), Fase 4.3 (rate limiting e proteção
-> contra abuso) e Fase 4.4 (segurança da aplicação — cabeçalhos HTTP,
-> CSRF, auditoria de permissões) implementadas** — ver
+> contra abuso), Fase 4.4 (segurança da aplicação — cabeçalhos HTTP,
+> CSRF, auditoria de permissões) e Fase 4.5 (automação de CI/CD —
+> auditoria de dependências, workflow de implantação gated por
+> aprovação) implementadas** — ver
 > [docs/phase-4.1-plan.md](phase-4.1-plan.md),
 > [docs/phase-4.2-plan.md](phase-4.2-plan.md),
-> [docs/phase-4.3-plan.md](phase-4.3-plan.md) e
-> [docs/phase-4.4-plan.md](phase-4.4-plan.md); pendentes apenas de uma
-> implantação real (fora do escopo de qualquer fase até aqui). Ver
+> [docs/phase-4.3-plan.md](phase-4.3-plan.md),
+> [docs/phase-4.4-plan.md](phase-4.4-plan.md) e
+> [docs/phase-4.5-plan.md](phase-4.5-plan.md); pendentes apenas de uma
+> implantação real (fora do escopo de qualquer fase até aqui) e da
+> criação manual do Environment `production` com aprovador obrigatório
+> (ver `infra/sam/README.md`). Ver
 > [docs/phase-1-plan.md](phase-1-plan.md) e
 > [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
 > para a Fase 1, [docs/phase-2-plan.md](phase-2-plan.md) para a Fase 2,

@@ -1,4 +1,4 @@
-# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 2.2 / Fase 3.1 / Fase 3.2 / Fase 4.4)
+# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 2.2 / Fase 3.1 / Fase 3.2 / Fase 4.4 / Fase 4.5)
 
 Frontend em Vue 3 + TypeScript + Vite (ver
 [ADR-0008](../docs/decisions/0008-frontend-vue-3.md)), publicado como
@@ -8,8 +8,9 @@ Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
 [docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md),
 [docs/phase-2.2-plan.md](../docs/phase-2.2-plan.md),
 [docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md),
-[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md) e
-[docs/phase-4.4-plan.md](../docs/phase-4.4-plan.md). Contrato completo da
+[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md),
+[docs/phase-4.4-plan.md](../docs/phase-4.4-plan.md) e
+[docs/phase-4.5-plan.md](../docs/phase-4.5-plan.md). Contrato completo da
 API consumida: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Estrutura
@@ -159,7 +160,12 @@ npm run test:coverage # Vitest com cobertura (v8)
 npm run lint           # ESLint (Vue + TypeScript)
 npm run type-check     # vue-tsc
 npm run build          # build de produção (usado também como verificação de tipos + bundling)
+npm audit --audit-level=high # Fase 4.5, ADR-0015
 ```
 
 Chamadas de API são isoladas com mocks de `fetch`/módulo nos testes — não
 há dependência de rede ou do backend real (RNF-18).
+
+`npm audit` também roda no CI (`.github/workflows/ci.yml`), complementando
+o Dependabot já configurado — captura vulnerabilidades conhecidas no
+momento do PR, não só na próxima execução agendada do Dependabot.

@@ -1,8 +1,10 @@
 name: CI
 
 # CI mínimo da Fase 1: lint, testes e build do frontend; lint e testes do
-# backend; verificação de arquivos sensíveis. Não há workflow de
-# publicação/implantação em produção nesta fase — ver docs/phase-1-plan.md.
+# backend; verificação de arquivos sensíveis. Fase 4.5: auditoria de
+# vulnerabilidades de dependências (npm audit / pip-audit) — ver
+# docs/phase-4.5-plan.md e ADR-0015. Implantação real é um workflow
+# separado (.github/workflows/deploy.yml), não este.
 
 on:
   push:
@@ -44,6 +46,14 @@ jobs:
       - name: Build de produção
         run: npm run build
 
+      # Fase 4.5, ADR-0015: só falha para high/critical, complementando o
+      # Dependabot já configurado (captura no momento do PR, não só na
+      # execução agendada). Um alto sem correção disponível ainda falharia
+      # aqui — se isso acontecer, avaliar `npm audit fix` ou registrar uma
+      # exceção explícita, não abaixar o nível silenciosamente.
+      - name: Auditoria de dependências (npm audit)
+        run: npm audit --audit-level=high
+
   backend:
     name: Backend (lint, testes)
     runs-on: ubuntu-latest
@@ -67,6 +77,15 @@ jobs:
 
       - name: Testes
         run: pytest
+
+      # Fase 4.5, ADR-0015: complementa o Dependabot já configurado
+      # (captura no momento do PR, não só na execução agendada).
+      # `pip-audit` não tem um nível de severidade equivalente ao
+      # `--audit-level` do npm — qualquer vulnerabilidade conhecida falha
+      # o build; uma sem correção disponível pode ser suprimida
+      # explicitamente com `--ignore-vuln <ID>` (nunca silenciosamente).
+      - name: Auditoria de dependências (pip-audit)
+        run: pip-audit -r requirements-dev.txt
 
   sensitive-files-check:
     name: Verificação de arquivos sensíveis
