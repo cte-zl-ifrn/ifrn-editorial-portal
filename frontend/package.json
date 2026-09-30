@@ -20,7 +20,7 @@
     "@tiptap/pm": "^3.30.3",
     "@tiptap/starter-kit": "^3.30.3",
     "@tiptap/vue-3": "^3.30.3",
-    "markdown-it": "^15.0.0",
+    "markdown-it": "^15.0.1",
     "vue": "^3.5.41",
     "vue-router": "^5.2.0"
   },
