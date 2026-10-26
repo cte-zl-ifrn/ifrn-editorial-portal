@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import RedirectResponse
 
+from ..auth.oauth_state import generate_oauth_nonce
 from ..auth.session import create_session_cookie_value
 from ..dependencies import HttpClientDep, SettingsDep
 from ..logging import get_logger, log_event
@@ -13,7 +14,8 @@ logger = get_logger(__name__)
 @router.get("/auth/login")
 def login(settings: SettingsDep) -> RedirectResponse:
     """Inicia o fluxo OAuth — RF-01, RF-02."""
-    authorize_url, nonce = build_authorize_url(settings)
+    nonce = generate_oauth_nonce()
+    authorize_url = build_authorize_url(settings, nonce)
     response = RedirectResponse(url=authorize_url, status_code=302)
     response.set_cookie(
         key=settings.oauth_state_cookie_name,
