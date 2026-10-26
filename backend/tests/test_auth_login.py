@@ -1,5 +1,6 @@
-from src.auth.oauth_state import state_cookie_value
 from urllib.parse import parse_qs, urlparse
+
+from src.auth.oauth_state import state_cookie_value
 
 
 def test_login_redirects_to_github_with_state(client, settings):

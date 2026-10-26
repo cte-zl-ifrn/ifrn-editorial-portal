@@ -37,7 +37,7 @@ def state_cookie_value(settings: Settings, state: str) -> str:
     """
     return hmac.new(
         settings.session_secret.encode("utf-8"),
-        f"{_SALT}:{state}".encode("utf-8"),
+        f"{_SALT}:{state}".encode(),
         hashlib.sha256,
     ).hexdigest()
 
