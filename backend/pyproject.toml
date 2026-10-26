@@ -1,6 +1,6 @@
 [project]
 name = "ifrn-editorial-portal-backend"
-version = "0.1.1"
+version = "0.1.2"
 description = "Backend do ifrn-editorial-portal — Fase 2.1 (carregamento e renderização)"
 requires-python = ">=3.12"
 dependencies = [
