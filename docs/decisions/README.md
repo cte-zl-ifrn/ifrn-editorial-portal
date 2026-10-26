@@ -49,6 +49,13 @@ Links para o documento de arquitetura ou outras ADRs relacionadas.
 | [0006](0006-fluxo-branch-e-pull-request.md) | Toda alteração via branch própria e Pull Request, sem push direto na main | Aceita |
 | [0007](0007-organizacao-de-assets.md) | Organização de assets em `assets/images` e `assets/files` | Aceita |
 | [0008](0008-frontend-vue-3.md) | Frontend em Vue 3, TypeScript e Vite | Aceita |
+| [0009](0009-conversao-markdown-tiptap-e-front-matter.md) | Conversão Markdown ↔ Tiptap e preservação do front matter na Fase 2 | Aceita |
+| [0010](0010-backend-fastapi.md) | Backend implementado com FastAPI (não Django) | Aceita |
+| [0011](0011-escrita-branch-commit-pull-request.md) | Estratégia de escrita no central-ajuda (branch, commit e Pull Request) | Aceita |
+| [0012](0012-segredos-secrets-manager.md) | Segredos de produção via AWS Secrets Manager | Aceita |
+| [0013](0013-rate-limiting-api-gateway.md) | Rate limiting via throttling nativo do API Gateway | Aceita |
+| [0014](0014-csrf-cookies-cross-origin.md) | Mitigação de CSRF para cookies de sessão cross-origin | Aceita |
+| [0015](0015-cicd-implantacao-aprovada.md) | Automação de CI/CD com implantação manual aprovada | Aceita |
 
 ## Como propor uma nova ADR
 
@@ -91,6 +98,3 @@ As 10 decisões iniciais foram agrupadas em 7 ADRs. O agrupamento foi feito para
 | Lambda         | Complexidade de autenticação e CORS | Spike técnico                   |
 | Branch + PR    | Conflitos de edição                 | Teste de concorrência           |
 | Assets globais | Colisões e referências inválidas    | Validador de caminhos           |
-
-
-

@@ -1,13 +1,29 @@
 openapi: 3.0.3
 info:
-  title: IFRN Editorial Portal API — Fase 1
+  title: IFRN Editorial Portal API — Fase 1 / Fase 2 / Fase 3 / Fase 4
   description: >-
-    API do ifrn-editorial-portal, escopo da Fase 1 (caminho crítico de
-    leitura): health check, autenticação, sessão, autorização e leitura de
-    um documento Markdown de demonstração no repositório
-    cte-zl-ifrn/central-ajuda. Não inclui edição, upload, criação de
-    branches/commits/Pull Requests, conforme docs/phase-1-plan.md.
-  version: "0.1.0"
+    API do ifrn-editorial-portal. Fase 1: health check, autenticação,
+    sessão, autorização e leitura de um documento Markdown de demonstração
+    no repositório cte-zl-ifrn/central-ajuda. Fase 2.1: a leitura do
+    documento passou a retornar o front matter separado do corpo (ver
+    ADR-0009), para renderização no editor Tiptap. Fase 2.2: edição
+    habilitada no Tiptap, com serialização de volta para Markdown feita
+    inteiramente no frontend (não faz parte desta API). Fase 3.1: envio
+    real da alteração — cria branch, grava o arquivo e abre um Pull
+    Request no central-ajuda (ver ADR-0011). Fase 3.2: a mesma submissão
+    aceita assets (imagens) gravados na mesma branch, validados pelo
+    backend (MIME, assinatura, tamanho, nome — ver ADR-0007), conforme
+    docs/phase-3.1-plan.md e docs/phase-3.2-plan.md. Fase 4.3: teto sobre
+    o corpo inteiro da submissão (413) e rate limiting nativo do API
+    Gateway (429), ver ADR-0013. Fase 4.4: toda resposta inclui
+    cabeçalhos de segurança HTTP (Content-Security-Policy,
+    X-Content-Type-Options, X-Frame-Options, Referrer-Policy); toda
+    requisição POST/PUT/PATCH/DELETE exige o cabeçalho `X-Portal-Client`
+    (403 se ausente, mesmo com sessão válida — proteção contra CSRF, ver
+    ADR-0014); qualquer erro não mapeado retorna 500 com o mesmo envelope
+    `{error: "internal_error", message, correlation_id}`, nunca detalhe
+    interno.
+  version: "0.6.0"
 servers:
   - url: http://localhost:8000
     description: Backend local (desenvolvimento)
@@ -17,6 +33,7 @@ tags:
   - name: auth
   - name: me
   - name: documents
+  - name: submissions
 
 paths:
   /health:
@@ -105,11 +122,24 @@ paths:
     post:
       tags: [auth]
       summary: Encerra a sessão do portal
-      description: Idempotente — chamar sem sessão ativa não é erro.
+      description: >-
+        Idempotente — chamar sem sessão ativa não é erro. Exige o
+        cabeçalho `X-Portal-Client` (Fase 4.4, ADR-0014), como toda
+        requisição que altera estado.
       security: []
       responses:
         "204":
           description: Sessão encerrada (ou já inexistente)
+        "403":
+          description: >-
+            Cabeçalho `X-Portal-Client` ausente (proteção contra CSRF,
+            ver ADR-0014).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "missing_csrf_header"
 
   /api/me:
     get:
@@ -141,13 +171,15 @@ paths:
   /api/documents/sample:
     get:
       tags: [documents]
-      summary: Lê o documento Markdown de demonstração da Fase 1
+      summary: Lê o documento Markdown de demonstração, com front matter separado do corpo
       description: >-
         Lê, via GitHub App, o arquivo fixo
-        `_docs/ambiente-virtual/acesso-moodle.md` no repositório
+        `_docs/proitec/como-fazer-cursos.md` no repositório
         `cte-zl-ifrn/central-ajuda`, branch `main`. O caminho é fixo no
         backend nesta fase; não é possível informar outro caminho via
-        parâmetro de requisição.
+        parâmetro de requisição. `front_matter_raw + body` reproduz o
+        arquivo original (ver ADR-0009); `front_matter` é o mesmo conteúdo
+        já parseado, apenas para exibição.
       security:
         - sessionCookie: []
       responses:
@@ -158,11 +190,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/DocumentResponse"
               example:
-                path: "_docs/ambiente-virtual/acesso-moodle.md"
-                name: "acesso-moodle.md"
-                content: "---\ntitle: Acesso ao Moodle\n---\n\n# Como acessar o Moodle\n..."
+                path: "_docs/proitec/como-fazer-cursos.md"
+                name: "como-fazer-cursos.md"
                 sha: "8d233eaa7ad166d412ada7a87a8a28ab67072197"
-                encoding: "utf-8"
+                front_matter:
+                  title: "Como fazer os cursos do ProITEC?"
+                  categories: ["proitec", "ambiente_virtual", "chamados"]
+                front_matter_raw: "---\ntitle: Como fazer os cursos do ProITEC?\n---\n"
+                body: "\n# Como fazer os cursos do ProITEC?\n\n..."
+        "502":
+          description: Falha ao ler o repositório via GitHub App, ou front matter inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                github_communication_error:
+                  value: { error: "github_communication_error" }
+                invalid_front_matter:
+                  value: { error: "invalid_front_matter" }
+                invalid_document_encoding:
+                  value: { error: "invalid_document_encoding" }
         "401":
           description: Sem sessão válida
           content:
@@ -181,12 +229,127 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "502":
-          description: Falha ao ler o repositório via GitHub App
+
+  /api/submissions:
+    post:
+      tags: [submissions]
+      summary: Cria uma branch, grava o documento (e assets) editados, e abre um Pull Request
+      description: >-
+        Fase 3.1: escreve no documento de demonstração fixo. Fase 3.2:
+        aceita também `assets` (imagens), gravados na mesma branch, com o
+        diretório calculado pelo backend a partir do documento fixo
+        (`assets/images/{categoria}/`, ver ADR-0007) — nunca aceito do
+        cliente. Assets são validados integralmente (MIME, assinatura,
+        tamanho, nome) antes de qualquer chamada ao GitHub; um asset
+        inválido não cria branch, commit ou PR. O backend relê o arquivo
+        original no momento da gravação para obter o front matter atual e
+        detectar conflito de edição concorrente (`base_sha` divergente do
+        `sha` atual retorna 409, sem gravar nada). `owner`, `repo` e a
+        branch base (`main`) são fixos no backend — não fazem parte do
+        corpo da requisição. Ver ADR-0011.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmissionRequest"
+            example:
+              body: "\n# Como fazer os cursos do ProITEC?\n\nTexto revisado.\n\n![Tela de login](../../assets/images/proitec/como-fazer-cursos-a1b2c3d4.png)\n"
+              base_sha: "8d233eaa7ad166d412ada7a87a8a28ab67072197"
+              summary: "Revisa o texto de introdução e adiciona uma captura de tela."
+              assets:
+                - kind: "image"
+                  filename: "como-fazer-cursos-a1b2c3d4.png"
+                  content: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."
+                  alt: "Tela de login"
+      responses:
+        "201":
+          description: Branch, commit(s) e Pull Request criados com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionResponse"
+              example:
+                submission_id: "a1b2c3d4"
+                branch: "portal/update/2026/a1b2c3d4-como-fazer-cursos"
+                pull_request:
+                  number: 42
+                  html_url: "https://github.com/cte-zl-ifrn/central-ajuda/pull/42"
+                  state: "open"
+                asset_paths: ["assets/images/proitec/como-fazer-cursos-a1b2c3d4.png"]
+        "401":
+          description: Sem sessão válida
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: >-
+            Usuário autenticado, mas não autorizado, ou cabeçalho
+            `X-Portal-Client` ausente (proteção contra CSRF, Fase 4.4,
+            ver ADR-0014).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                unauthorized:
+                  value: { error: "unauthorized" }
+                missing_csrf_header:
+                  value: { error: "missing_csrf_header" }
+        "409":
+          description: >-
+            Conflito de edição concorrente — o documento mudou no
+            repositório desde que o cliente carregou `base_sha`. Nenhuma
+            branch, commit ou PR é criado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "document_conflict"
+        "413":
+          description: >-
+            Corpo da requisição excede o tamanho máximo permitido (Fase
+            4.3, ADR-0013) — verificado antes de qualquer parsing, nada
+            é gravado. Separado dos limites por asset individual (ver
+            422/invalid_asset).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "payload_too_large"
+        "422":
+          description: >-
+            Corpo da requisição inválido, ou um asset rejeitado (tipo,
+            assinatura, tamanho ou nome inválidos) — nesse caso, nada é
+            gravado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalid_request:
+                  value: { error: "invalid_request" }
+                invalid_asset:
+                  value: { error: "invalid_asset", message: "Extensão '.svg' não permitida para image." }
+        "429":
+          description: >-
+            Limite de requisições excedido (rate limiting nativo do API
+            Gateway, Fase 4.3, ADR-0013) — resposta padrão do API
+            Gateway, não do backend; só tem efeito depois de uma
+            implantação real.
+        "502":
+          description: Falha ao criar a branch, gravar um arquivo ou abrir o Pull Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "github_communication_error"
 
 components:
   securitySchemes:
@@ -238,23 +401,127 @@ components:
 
     DocumentResponse:
       type: object
-      required: [path, name, content, sha, encoding]
+      required: [path, name, sha, front_matter, front_matter_raw, body]
       properties:
         path:
           type: string
-          example: "_docs/ambiente-virtual/acesso-moodle.md"
+          example: "_docs/proitec/como-fazer-cursos.md"
         name:
           type: string
-          example: "acesso-moodle.md"
-        content:
-          type: string
-          description: Conteúdo Markdown decodificado (UTF-8)
+          example: "como-fazer-cursos.md"
         sha:
           type: string
           description: SHA do blob no Git, para detecção futura de conflitos
-        encoding:
+        front_matter:
+          type: object
+          description: >-
+            Front matter YAML já parseado, apenas para exibição (ver
+            ADR-0009). Não é a fonte de verdade para reconstrução do
+            arquivo — essa é `front_matter_raw`.
+          additionalProperties: true
+        front_matter_raw:
           type: string
-          enum: [utf-8]
+          description: >-
+            Bloco de front matter, incluindo os delimitadores `---`,
+            preservado como texto exatamente como está no arquivo
+            original. Vazio se o documento não tiver front matter.
+        body:
+          type: string
+          description: >-
+            Markdown do documento após o front matter, decodificado em
+            UTF-8. `front_matter_raw + body` reproduz o arquivo original.
+
+    AssetInput:
+      type: object
+      required: [kind, filename, content]
+      properties:
+        kind:
+          type: string
+          enum: [image, file]
+        filename:
+          type: string
+          maxLength: 200
+          description: >-
+            Nome sugerido pelo cliente (ex.: `{slug-do-documento}-{id}.png`)
+            — sempre validado pelo backend antes de gravar (extensão
+            permitida, sem `/` nem `..`). O diretório
+            (`assets/images/{categoria}/` ou `assets/files/{categoria}/`)
+            é sempre calculado pelo backend, nunca aceito do cliente (ver
+            ADR-0007).
+        content:
+          type: string
+          description: Conteúdo binário do arquivo, em base64.
+        alt:
+          type: string
+          maxLength: 1000
+          description: "Texto alternativo — obrigatório quando kind é 'image'."
+          nullable: true
+
+    SubmissionRequest:
+      type: object
+      required: [body, base_sha, summary]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 200000
+          description: >-
+            Markdown do corpo já serializado pelo frontend (ver
+            ADR-0009) — sem front matter. O backend relê o front matter
+            atual no momento da gravação; não envie `front_matter_raw`.
+            Referências a assets já devem apontar para o caminho final
+            (ver exemplo do endpoint).
+        base_sha:
+          type: string
+          minLength: 1
+          description: >-
+            `sha` do documento no momento em que foi carregado para
+            edição (retornado por GET /api/documents/sample). Usado para
+            detectar conflito de edição concorrente.
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Resumo/justificativa da alteração, incluído no corpo do Pull Request.
+        assets:
+          type: array
+          maxItems: 20
+          default: []
+          items:
+            $ref: "#/components/schemas/AssetInput"
+          description: Assets (imagens) a gravar na mesma branch (Fase 3.2).
+
+    PullRequestInfo:
+      type: object
+      required: [number, html_url, state]
+      properties:
+        number:
+          type: integer
+        html_url:
+          type: string
+        state:
+          type: string
+
+    SubmissionResponse:
+      type: object
+      required: [submission_id, branch, pull_request, asset_paths]
+      properties:
+        submission_id:
+          type: string
+          description: Identificador gerado pelo backend para esta submissão (best-effort, ver ADR-0011).
+        branch:
+          type: string
+          example: "portal/update/2026/a1b2c3d4-como-fazer-cursos"
+        pull_request:
+          $ref: "#/components/schemas/PullRequestInfo"
+        asset_paths:
+          type: array
+          items:
+            type: string
+          description: >-
+            Caminhos finais (no repositório) dos assets gravados, na
+            mesma ordem em que foram enviados — vazio se nenhum asset foi
+            enviado.
 
     ErrorResponse:
       type: object

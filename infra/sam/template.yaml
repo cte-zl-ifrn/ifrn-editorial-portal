@@ -45,10 +45,14 @@ Globals:
         GITHUB_OAUTH_CLIENT_ID: !Ref GithubOauthClientId
         COOKIE_SECURE: !If [IsProduction, "true", "false"]
         COOKIE_SAMESITE: !If [IsProduction, "none", "lax"]
-        # Demais segredos (GITHUB_OAUTH_CLIENT_SECRET, GITHUB_APP_ID,
-        # GITHUB_APP_PRIVATE_KEY, SESSION_SECRET) são injetados a partir de
-        # SecretsManagerSecretArn no momento da implantação real — nunca
-        # como valor literal neste template.
+        # O ARN em si não é sensível (só aponta para o segredo — ver
+        # ADR-0012); os valores sensíveis de dentro dele
+        # (GITHUB_OAUTH_CLIENT_SECRET, GITHUB_APP_ID,
+        # GITHUB_APP_PRIVATE_KEY, SESSION_SECRET) nunca aparecem como
+        # valor literal neste template. `get_settings()`
+        # (backend/src/config.py) busca esse segredo uma única vez por
+        # cold start quando esta variável está presente.
+        SECRETS_MANAGER_SECRET_ARN: !Ref SecretsManagerSecretArn
 
 Resources:
   PortalApi:
@@ -64,6 +68,22 @@ Resources:
           - POST
         AllowHeaders:
           - content-type
+      # Rate limiting nativo do API Gateway (Fase 4.3, ver ADR-0013) —
+      # sem estado compartilhado, sem banco de dados. Limiares são um
+      # ponto de partida generoso para o volume esperado do MVP, não um
+      # SLA — ajustar com dados reais de uso após a primeira implantação.
+      # `RouteSettings` só tem efeito sobre uma rota que exista de fato
+      # na API — por isso `POST /api/submissions` também é registrada
+      # como um evento explícito em `PortalFunction`, além do
+      # `ANY /{proxy+}` que já cobria todas as rotas (uma rota mais
+      # específica tem prioridade sobre o catch-all).
+      DefaultRouteSettings:
+        ThrottlingRateLimit: 20
+        ThrottlingBurstLimit: 40
+      RouteSettings:
+        "POST /api/submissions":
+          ThrottlingRateLimit: 2
+          ThrottlingBurstLimit: 5
 
   PortalFunction:
     Type: AWS::Serverless::Function
@@ -84,6 +104,57 @@ Resources:
             ApiId: !Ref PortalApi
             Path: /{proxy+}
             Method: ANY
+        # Rota explícita, além do catch-all acima, só para que o
+        # RouteSettings de POST /api/submissions (rate limit mais
+        # restritivo, ver PortalApi) tenha uma rota de verdade para
+        # sobrescrever — ambas apontam para a mesma função.
+        SubmissionsApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PortalApi
+            Path: /api/submissions
+            Method: POST
+
+  # Alarmes básicos de operação (Fase 4.2, ver docs/phase-4.2-plan.md).
+  # Definidos aqui, sem canal de notificação real conectado (SNS/e-mail)
+  # — conectar um canal depende de decidir quem deve ser notificado,
+  # responsabilidade institucional fora do escopo do código. Limiares
+  # abaixo são um ponto de partida, não um SLA — ajustar com dados reais
+  # de uso após a primeira implantação.
+  FunctionErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: >
+        Erros da função Lambda do backend acima do esperado.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PortalFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  FunctionLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: >
+        Duração (latência) média da função Lambda do backend acima do
+        esperado.
+      Namespace: AWS/Lambda
+      MetricName: Duration
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PortalFunction
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 3000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
 
 Outputs:
   ApiUrl:

@@ -22,6 +22,22 @@ describe('apiFetch', () => {
     )
   })
 
+  it('always sends the X-Portal-Client header (ADR-0014)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'ok' }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch<{ status: string }>('/api/submissions', { method: 'POST' })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${API_BASE_URL}/api/submissions`,
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'X-Portal-Client': '1' }),
+      }),
+    )
+  })
+
   it('throws ApiError with the error code from the response body', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ error: 'unauthenticated', message: 'Sem sessão.' }), {

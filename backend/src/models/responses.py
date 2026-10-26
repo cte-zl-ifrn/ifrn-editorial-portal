@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -22,11 +24,30 @@ class MeResponse(BaseModel):
 
 
 class DocumentResponse(BaseModel):
+    """Ver ADR-0009: front_matter_raw + body reproduz o arquivo original;
+    front_matter é o mesmo conteúdo já parseado, apenas para exibição."""
+
     path: str
     name: str
-    content: str
     sha: str
-    encoding: str = "utf-8"
+    front_matter: dict[str, Any]
+    front_matter_raw: str
+    body: str
+
+
+class PullRequestInfo(BaseModel):
+    number: int
+    html_url: str
+    state: str
+
+
+class SubmissionResponse(BaseModel):
+    submission_id: str
+    branch: str
+    pull_request: PullRequestInfo
+    asset_paths: list[str] = []
+    """Caminhos finais (no repositório) dos assets gravados, na mesma
+    ordem em que foram enviados — vazio na Fase 3.1 (sem assets)."""
 
 
 class ErrorResponse(BaseModel):

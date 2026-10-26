@@ -48,6 +48,28 @@ class InvalidDocumentEncodingError(PortalError):
     status_code = 502
 
 
+class InvalidFrontMatterError(PortalError):
+    error_code = "invalid_front_matter"
+    status_code = 502
+
+
 class MissingConfigurationError(PortalError):
     error_code = "missing_configuration"
     status_code = 500
+
+
+class DocumentConflictError(PortalError):
+    """Ver ADR-0011: o backend relê o documento antes de gravar e compara
+    com `base_sha` — divergência significa que o arquivo mudou desde que
+    o usuário começou a editar."""
+
+    error_code = "document_conflict"
+    status_code = 409
+
+
+class InvalidAssetError(PortalError):
+    """Ver ADR-0007 e docs/phase-3.2-plan.md: asset rejeitado antes de
+    qualquer gravação — tipo, assinatura, tamanho ou nome inválidos."""
+
+    error_code = "invalid_asset"
+    status_code = 422

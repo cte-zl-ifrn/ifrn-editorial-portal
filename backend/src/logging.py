@@ -9,8 +9,11 @@ from __future__ import annotations
 import json
 import logging
 import sys
+import time
 import uuid
 from contextvars import ContextVar
+
+_METRICS_NAMESPACE = "IfrnEditorialPortal"
 
 _correlation_id: ContextVar[str] = ContextVar("correlation_id", default="-")
 
@@ -68,3 +71,35 @@ def get_logger(name: str) -> logging.Logger:
 
 def log_event(logger: logging.Logger, message: str, **fields: object) -> None:
     logger.info(message, extra={"extra_fields": fields})
+
+
+def log_metric(
+    metric_name: str,
+    value: float = 1,
+    *,
+    unit: str = "Count",
+    dimensions: dict[str, str] | None = None,
+) -> None:
+    """Emite uma métrica em Embedded Metric Format (EMF, ver
+    docs/phase-4.2-plan.md) — o CloudWatch extrai a métrica
+    automaticamente de uma linha de log, sem exigir uma chamada
+    `PutMetricData` separada. Escreve direto em stdout, fora de
+    `logging`: `_JsonFormatter` embrulharia o payload numa envelope
+    (`message`, `level`, ...) incompatível com o schema EMF, que exige o
+    nome da métrica e as dimensões como chaves de topo do JSON."""
+    dimensions = dimensions or {}
+    payload: dict[str, object] = {
+        "_aws": {
+            "Timestamp": int(time.time() * 1000),
+            "CloudWatchMetrics": [
+                {
+                    "Namespace": _METRICS_NAMESPACE,
+                    "Dimensions": [list(dimensions.keys())],
+                    "Metrics": [{"Name": metric_name, "Unit": unit}],
+                }
+            ],
+        },
+        **dimensions,
+        metric_name: value,
+    }
+    print(json.dumps(payload, default=str, ensure_ascii=False))

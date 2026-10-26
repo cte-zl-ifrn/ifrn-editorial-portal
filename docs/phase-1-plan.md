@@ -200,6 +200,17 @@ A Fase 1 é considerada concluída quando:
   documenta e valida a configuração necessária apenas para desenvolvimento
   local.
 
+## Fase 1.5 — Validação manual
+
+A Fase 1 automatizada só cobria o fluxo OAuth/GitHub App com mocks
+(`respx` no backend, mocks de módulo no frontend); o fluxo fim a fim
+contra o GitHub real ficou registrado como limitação em aberto. Essa
+lacuna foi encerrada em 2026-08-25 com uma validação manual, cobrindo
+login de usuário autorizado (sessão criada e documento lido) e de usuário
+sem permissão (acesso negado) — ver
+[docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
+para o relatório completo.
+
 ## Definição de pronto da fase
 
 Uma tarefa da Fase 1 só é considerada pronta quando satisfizer também a

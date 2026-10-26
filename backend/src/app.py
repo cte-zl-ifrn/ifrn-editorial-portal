@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import time
+
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .errors import PortalError
-from .handlers import auth, documents, health, me
+from .handlers import auth, documents, health, me, submissions
 from .logging import (
     configure_logging,
     get_logger,
     log_event,
+    log_metric,
     new_correlation_id,
     set_correlation_id,
 )
@@ -20,12 +24,35 @@ from .logging import (
 configure_logging()
 logger = get_logger(__name__)
 
+# Fase 4.4, ADR-0014 — cabeçalho customizado exigido em toda requisição
+# que altera estado. Um cookie com SameSite=None (necessário em produção,
+# frontend e backend em origens diferentes) perde a proteção nativa do
+# navegador contra CSRF; um formulário/imagem cross-site não consegue
+# definir um cabeçalho customizado sem disparar um preflight CORS, que a
+# política de CORS já restrita (uma única origem permitida) rejeita.
+_PORTAL_CLIENT_HEADER = "x-portal-client"
+_STATE_CHANGING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+# Fase 4.4 — cabeçalhos de segurança HTTP em toda resposta. Este backend
+# é uma API somente JSON (a UI do Tiptap roda inteiramente no frontend,
+# em outra origem — este CSP não tem nenhum efeito sobre ela). Exceção:
+# os paths de documentação automática do FastAPI (`/docs`, `/redoc`)
+# carregam script/estilo de um CDN externo e quebrariam com
+# `default-src 'none'` — mantidos fora do CSP, mas ainda cobertos pelos
+# demais cabeçalhos.
+_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+}
+_CSP_EXEMPT_PATHS = {"/docs", "/redoc", "/openapi.json"}
+
 
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
-        title="IFRN Editorial Portal API — Fase 1",
-        version="0.1.0",
+        title="IFRN Editorial Portal API — Fase 1 / Fase 2 / Fase 3.1",
+        version="0.3.0",
     )
 
     app.add_middleware(
@@ -37,12 +64,97 @@ def create_app() -> FastAPI:
     )
 
     @app.middleware("http")
-    async def correlation_id_middleware(request: Request, call_next):
+    async def csrf_header_middleware(request: Request, call_next):
+        """Ver ADR-0014: rejeita com `403`, mesmo com sessão válida, toda
+        requisição que altera estado e não envia `X-Portal-Client`."""
+        if (
+            request.method in _STATE_CHANGING_METHODS
+            and _PORTAL_CLIENT_HEADER not in request.headers
+        ):
+            from .logging import get_correlation_id
+
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "error": "missing_csrf_header",
+                    "message": "Cabeçalho X-Portal-Client obrigatório para esta requisição.",
+                    "correlation_id": get_correlation_id(),
+                },
+            )
+        return await call_next(request)
+
+    @app.middleware("http")
+    async def request_size_limit_middleware(request: Request, call_next):
+        """Teto sobre o corpo inteiro de uma submissão (Fase 4.3,
+        ADR-0013) — não substitui os limites por asset já existentes
+        (`assets/validation.py`), é uma proteção adicional contra um
+        payload anormalmente grande, verificada antes de qualquer
+        parsing. Registrado antes de `access_log_middleware` (mais
+        interno) para que uma rejeição aqui ainda apareça no log de
+        acesso, como qualquer outra resposta."""
+        if request.method == "POST" and request.url.path == "/api/submissions":
+            content_length = request.headers.get("content-length")
+            if content_length is not None:
+                try:
+                    body_size = int(content_length)
+                except ValueError:
+                    body_size = None
+                if body_size is not None and body_size > get_settings().max_submission_body_bytes:
+                    from .logging import get_correlation_id
+
+                    return JSONResponse(
+                        status_code=413,
+                        content={
+                            "error": "payload_too_large",
+                            "message": "O corpo da requisição excede o tamanho máximo permitido.",
+                            "correlation_id": get_correlation_id(),
+                        },
+                    )
+        return await call_next(request)
+
+    @app.middleware("http")
+    async def access_log_middleware(request: Request, call_next):
+        """Registro de acesso por requisição (Fase 4.2) — uma linha
+        estruturada ao final de toda requisição, mesmo em caso de exceção
+        não tratada (por isso o `try/finally`: sem ele, um bug genuíno no
+        handler faria a requisição nunca aparecer no log de acesso)."""
         correlation_id = request.headers.get("x-correlation-id", new_correlation_id())
         set_correlation_id(correlation_id)
-        log_event(logger, "request.received", path=request.url.path, method=request.method)
+        started_at = time.perf_counter()
+        status_code = 500
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            response.headers["X-Correlation-Id"] = correlation_id
+            return response
+        finally:
+            duration_ms = round((time.perf_counter() - started_at) * 1000, 2)
+            log_event(
+                logger,
+                "request.completed",
+                method=request.method,
+                path=request.url.path,
+                status_code=status_code,
+                duration_ms=duration_ms,
+            )
+            log_metric("RequestCount", dimensions={"Route": request.url.path})
+            if status_code >= 400:
+                log_metric(
+                    "ErrorCount",
+                    dimensions={"Route": request.url.path, "StatusCode": str(status_code)},
+                )
+
+    @app.middleware("http")
+    async def security_headers_middleware(request: Request, call_next):
+        """Ver comentário de `_SECURITY_HEADERS`/`_CSP_EXEMPT_PATHS` acima.
+        Registrado por último (mais externo) para que os cabeçalhos sejam
+        aplicados a toda resposta, inclusive as rejeições antecipadas dos
+        outros middlewares (403 de CSRF, 413 de tamanho)."""
         response = await call_next(request)
-        response.headers["X-Correlation-Id"] = correlation_id
+        for header, value in _SECURITY_HEADERS.items():
+            response.headers[header] = value
+        if request.url.path not in _CSP_EXEMPT_PATHS:
+            response.headers["Content-Security-Policy"] = "default-src 'none'"
         return response
 
     @app.exception_handler(PortalError)
@@ -65,10 +177,55 @@ def create_app() -> FastAPI:
             },
         )
 
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        from .logging import get_correlation_id
+
+        log_event(logger, "request.error", path=request.url.path, error="invalid_request")
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": "invalid_request",
+                "message": "Requisição inválida.",
+                "correlation_id": get_correlation_id(),
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        """Fase 4.4: sem isto, um bug genuíno (nenhuma exceção de domínio
+        conhecida) escaparia para o handler padrão do Starlette, que
+        retorna texto plano (`Internal Server Error`), não o envelope
+        `{error, message, correlation_id}` usado em toda outra resposta de
+        erro desta API — inconsistente, ainda que não vaze detalhe interno
+        (debug=False por padrão). Isto garante a mesma garantia de não
+        vazamento também para o caso não antecipado, não só para os erros
+        de domínio já mapeados."""
+        from .logging import get_correlation_id
+
+        log_event(
+            logger,
+            "request.error",
+            path=request.url.path,
+            error="internal_error",
+            status_code=500,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "internal_error",
+                "message": "Erro interno.",
+                "correlation_id": get_correlation_id(),
+            },
+        )
+
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(me.router)
     app.include_router(documents.router)
+    app.include_router(submissions.router)
 
     return app
 

@@ -1,21 +1,28 @@
-# Frontend — `ifrn-editorial-portal` (Fase 1)
+# Frontend — `ifrn-editorial-portal` (Fase 1 / Fase 2.1 / Fase 2.2 / Fase 3.1 / Fase 3.2 / Fase 4.4 / Fase 4.5)
 
 Frontend em Vue 3 + TypeScript + Vite (ver
 [ADR-0008](../docs/decisions/0008-frontend-vue-3.md)), publicado como
 build estático (compatível com GitHub Pages).
 
-Escopo desta fase: [docs/phase-1-plan.md](../docs/phase-1-plan.md). Contrato
-completo da API consumida: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
+Escopo: [docs/phase-1-plan.md](../docs/phase-1-plan.md),
+[docs/phase-2.1-plan.md](../docs/phase-2.1-plan.md),
+[docs/phase-2.2-plan.md](../docs/phase-2.2-plan.md),
+[docs/phase-3.1-plan.md](../docs/phase-3.1-plan.md),
+[docs/phase-3.2-plan.md](../docs/phase-3.2-plan.md),
+[docs/phase-4.4-plan.md](../docs/phase-4.4-plan.md) e
+[docs/phase-4.5-plan.md](../docs/phase-4.5-plan.md). Contrato completo da
+API consumida: [docs/api/openapi.yaml](../docs/api/openapi.yaml).
 
 ## Estrutura
 
 ```text
 frontend/
 ├── src/
-│   ├── components/    # componentes reutilizáveis (ex.: StatusMessage)
-│   ├── composables/   # useSession, useSampleDocument
-│   ├── services/      # apiClient, authService, documentService
-│   ├── types/          # tipos compartilhados (espelham a API)
+│   ├── components/    # StatusMessage, FrontMatterPanel, DocumentViewer (Tiptap)
+│   ├── composables/   # useSession, useSampleDocument, useSubmission
+│   ├── services/      # apiClient, authService, documentService, submissionService
+│   ├── lib/             # markdownToTiptap, tiptapToMarkdown, tiptapExtensions, pendingAssets
+│   ├── types/          # tipos compartilhados (espelham a API) e tiptap.ts
 │   ├── views/           # HomeView, LoginView, UnauthorizedView
 │   ├── router/           # rotas e guarda de navegação por sessão
 │   ├── App.vue
@@ -27,6 +34,71 @@ frontend/
 └── eslint.config.mjs
 ```
 
+## Edição do documento (Fase 2.1 + Fase 2.2)
+
+`HomeView.vue` converte `document.body` (Markdown) em um documento Tiptap
+via `markdownToTiptap` (`src/lib/markdownToTiptap.ts`, baseado em
+`markdown-it`) e renderiza em `DocumentViewer.vue`, que agora é editável
+(`editable`), com uma toolbar mínima (negrito, itálico, H1–H3, listas,
+link, imagem). A cada alteração, `DocumentViewer` emite o documento Tiptap
+atual (`update:content`); `HomeView.vue` serializa esse documento de volta
+para Markdown com `tiptapToMarkdown` (`src/lib/tiptapToMarkdown.ts`,
+serializer próprio, não delegado a uma lib genérica) e exibe a prévia do
+resultado (`document.front_matter_raw` + corpo serializado) — **nada é
+enviado ao backend ou ao GitHub**; a prévia é só client-side, para
+inspeção manual (Fase 2.2.5).
+
+`document.front_matter` (já parseado pelo backend) continua somente
+leitura em `FrontMatterPanel.vue` — front matter não é editável nesta
+fase. A superfície de edição do Tiptap é restrita em
+`src/lib/tiptapExtensions.ts` ao mesmo whitelist de nós do parser
+(desabilita blockquote, codeBlock, strike e underline do StarterKit), para
+que o editor nunca produza um nó que o serializer não saiba serializar.
+
+Ver [ADR-0009](../docs/decisions/0009-conversao-markdown-tiptap-e-front-matter.md)
+para a estratégia completa de conversão, preservação do front matter e as
+limitações conhecidas (normalizações cosmética documentadas no cabeçalho
+de `tiptapToMarkdown.ts`).
+
+## Envio da alteração (Fase 3.1) e assets (Fase 3.2)
+
+A seção "Enviar alteração" de `HomeView.vue` chama
+`createSubmission` (`src/services/submissionService.ts`) via
+`useSubmission` (`src/composables/useSubmission.ts`) com o corpo já
+serializado (`tiptapToMarkdown`), o `sha` do documento carregado
+(`base_sha`) e um resumo obrigatório informado pelo usuário. O front
+matter **não** é enviado — o backend relê o original no momento da
+gravação (ver [ADR-0011](../docs/decisions/0011-escrita-branch-commit-pull-request.md)).
+
+A resposta é tratada em três estados: sucesso (mostra o link do Pull
+Request criado), conflito (`document_conflict` — o documento mudou no
+repositório desde o carregamento; a UI orienta a recarregar a página) e
+erro genérico. Nenhuma escrita adicional é tentada automaticamente.
+
+O botão "Imagem" da toolbar (`DocumentViewer.vue`) abre um seletor de
+arquivo local (não mais uma URL, como na Fase 2.2), rejeita
+imediatamente qualquer tipo fora de PNG/JPEG/GIF/WebP (checando
+`file.type`, já que o `accept` do input é só uma dica de UI) e insere a
+imagem aceita como uma `data:` URL para prévia imediata. Só no momento
+de gerar a prévia final ou enviar (`resolvePendingAssets`,
+`src/lib/pendingAssets.ts`) essa `data:` URL é trocada pela **URL
+absoluta** definitiva
+(`https://raw.githubusercontent.com/cte-zl-ifrn/central-ajuda/main/assets/images/{categoria}/{slug}-{id}.{ext}`)
+e o conteúdo binário é extraído como um asset a enviar junto — o
+backend valida tudo de novo antes de gravar (ver
+[ADR-0007](../docs/decisions/0007-organizacao-de-assets.md)). Não é um
+caminho relativo: a profundidade de um caminho relativo depende de onde
+o Jekyll publica a página (`permalink`), que pode divergir da
+profundidade do arquivo fonte no repositório — um caminho relativo
+calculado a partir do arquivo fonte pode funcionar na visualização do
+GitHub e quebrar no site publicado (achado real da Fase 3.2.5). A URL
+absoluta aponta para `main`, então só passa a resolver depois do merge
+do Pull Request — troca deliberada, documentada na ADR-0007.
+
+O mesmo resultado (`resolvedSubmission`, em `HomeView.vue`) alimenta
+tanto a prévia quanto o envio, para que o nome de arquivo mostrado seja
+exatamente o mesmo que é gravado.
+
 ## Configuração
 
 ```bash
@@ -37,6 +109,12 @@ cp .env.example .env.local
 (`http://localhost:8000` por padrão). Nenhum segredo é ou deve ser colocado
 em variáveis `VITE_*`: tudo que começa com esse prefixo é embutido no
 bundle público (RNF-21).
+
+`apiFetch` (`src/services/apiClient.ts`) envia sempre `X-Portal-Client:
+1` em toda chamada, além de `credentials: "include"` — o backend exige
+esse cabeçalho em toda requisição que altera estado, como proteção
+contra CSRF (Fase 4.4, ver
+[ADR-0014](../docs/decisions/0014-csrf-cookies-cross-origin.md)).
 
 ## Executando localmente
 
@@ -82,7 +160,12 @@ npm run test:coverage # Vitest com cobertura (v8)
 npm run lint           # ESLint (Vue + TypeScript)
 npm run type-check     # vue-tsc
 npm run build          # build de produção (usado também como verificação de tipos + bundling)
+npm audit --audit-level=high # Fase 4.5, ADR-0015
 ```
 
 Chamadas de API são isoladas com mocks de `fetch`/módulo nos testes — não
 há dependência de rede ou do backend real (RNF-18).
+
+`npm audit` também roda no CI (`.github/workflows/ci.yml`), complementando
+o Dependabot já configurado — captura vulnerabilidades conhecidas no
+momento do PR, não só na próxima execução agendada do Dependabot.

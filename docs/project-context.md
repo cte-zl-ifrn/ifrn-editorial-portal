@@ -6,11 +6,41 @@ são conhecidos e quais perguntas ainda não têm resposta. Ele não substitui o
 documento de arquitetura — serve como ponto de entrada rápido antes de
 consultar os detalhes.
 
-> Estado atual: **Fase 1 em desenvolvimento** — spike do caminho crítico de
-> leitura (login → sessão → autorização → GitHub App → leitura de um
-> documento Markdown), sem edição, upload, branch, commit ou Pull Request.
-> Ver [docs/phase-1-plan.md](phase-1-plan.md) para escopo, critérios de
-> aceite e limitações detalhadas.
+> Estado atual: **Fase 1, Fase 2 e Fase 3 concluídas e validadas
+> manualmente** (Fase 1.5, Fase 2.1.5, Fase 2.2.5, Fase 3.1.5, Fase
+> 3.2.5) — o portal já escreve de verdade no `central-ajuda`: documento
+> e assets (imagens) gravados na mesma branch/Pull Request, com
+> múltiplos Pull Requests de teste mergeados de verdade
+> ([central-ajuda#1](https://github.com/cte-zl-ifrn/central-ajuda/pull/1),
+> [#2](https://github.com/cte-zl-ifrn/central-ajuda/pull/2),
+> [#3](https://github.com/cte-zl-ifrn/central-ajuda/pull/3),
+> [#5](https://github.com/cte-zl-ifrn/central-ajuda/pull/5)). A
+> referência de imagem gravada é uma URL absoluta do GitHub (não um
+> caminho relativo — ver [ADR-0007](decisions/0007-organizacao-de-assets.md)),
+> decisão tomada depois de um achado real na validação manual (caminho
+> relativo divergia entre a visualização do GitHub e o site publicado
+> pelo Jekyll). **Fase 4 (segurança e operação) em andamento**: dividida
+> em seis sub-fases em [docs/phase-4-plan.md](phase-4-plan.md) (ver
+> [issue #13](https://github.com/cte-zl-ifrn/ifrn-editorial-portal/issues/13)).
+> **Fase 4.1 (segredos via AWS Secrets Manager), Fase 4.2
+> (observabilidade via CloudWatch), Fase 4.3 (rate limiting e proteção
+> contra abuso), Fase 4.4 (segurança da aplicação — cabeçalhos HTTP,
+> CSRF, auditoria de permissões) e Fase 4.5 (automação de CI/CD —
+> auditoria de dependências, workflow de implantação gated por
+> aprovação) implementadas** — ver
+> [docs/phase-4.1-plan.md](phase-4.1-plan.md),
+> [docs/phase-4.2-plan.md](phase-4.2-plan.md),
+> [docs/phase-4.3-plan.md](phase-4.3-plan.md),
+> [docs/phase-4.4-plan.md](phase-4.4-plan.md) e
+> [docs/phase-4.5-plan.md](phase-4.5-plan.md); pendentes apenas de uma
+> implantação real (fora do escopo de qualquer fase até aqui) e da
+> criação manual do Environment `production` com aprovador obrigatório
+> (ver `infra/sam/README.md`). Ver
+> [docs/phase-1-plan.md](phase-1-plan.md) e
+> [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
+> para a Fase 1, [docs/phase-2-plan.md](phase-2-plan.md) para a Fase 2,
+> [docs/phase-3-plan.md](phase-3-plan.md) para a Fase 3, e
+> [docs/phase-4-plan.md](phase-4-plan.md) para a Fase 4.
 
 ## Visão geral
 
@@ -50,6 +80,13 @@ Detalhes em [ADR-0001](decisions/0001-separacao-portal-e-repositorio-de-conteudo
 | 9 | Sem push direto na `main` | [0006](decisions/0006-fluxo-branch-e-pull-request.md) |
 | 10 | Imagens em `assets/images`, arquivos em `assets/files` | [0007](decisions/0007-organizacao-de-assets.md) |
 | 11 | Frontend em Vue 3, TypeScript e Vite | [0008](decisions/0008-frontend-vue-3.md) |
+| 12 | Front matter preservado como texto bruto; parsing Markdown→Tiptap com parser controlado; serializer Tiptap→Markdown próprio | [0009](decisions/0009-conversao-markdown-tiptap-e-front-matter.md) |
+| 13 | Backend implementado com FastAPI (não Django) | [0010](decisions/0010-backend-fastapi.md) |
+| 14 | Gravação via Contents API (não Git Data API); conflito revalidado antes de gravar; front matter sempre relido, nunca confiado ao cliente; idempotência best-effort | [0011](decisions/0011-escrita-branch-commit-pull-request.md) |
+| 15 | Segredos de produção em um único segredo JSON no AWS Secrets Manager, buscado uma vez por cold start | [0012](decisions/0012-segredos-secrets-manager.md) |
+| 16 | Rate limiting via throttling nativo do API Gateway, não um limitador de aplicação com estado compartilhado | [0013](decisions/0013-rate-limiting-api-gateway.md) |
+| 17 | CSRF em requisições autenticadas por cookie cross-origin mitigado por cabeçalho customizado exigido, não por token armazenado | [0014](decisions/0014-csrf-cookies-cross-origin.md) |
+| 18 | Implantação automática em `development`, aprovação humana obrigatória em `production` | [0015](decisions/0015-cicd-implantacao-aprovada.md) |
 
 O índice completo, com contexto e consequências de cada decisão, está em
 [docs/decisions/README.md](decisions/README.md).
@@ -96,7 +133,6 @@ Descrição completa em
 Ainda não decididas — não devem ser assumidas como resolvidas ao planejar
 trabalho futuro:
 
-- Framework ou estilo de implementação do backend Python.
 - Método exato de autenticação do usuário (OAuth com PKCE vs. fluxo de
   instalação associado à GitHub App).
 - Lista final de permissões por papel de usuário.
@@ -128,13 +164,31 @@ produção (contato institucional definitivo, políticas de retenção etc.).
 ## Referências
 
 - [README.md](../README.md)
-- [SECURITY.md](../SECURITY.md) — ainda no template padrão, pendente de
-  preenchimento com o processo real de reporte de vulnerabilidades.
+- [SECURITY.md](../SECURITY.md) — canal de reporte de vulnerabilidades e
+  superfície de segurança da Fase 1.
 - [docs/initial-architecture.md](initial-architecture.md)
 - [docs/decisions/README.md](decisions/README.md)
 - [docs/glossary.md](glossary.md)
 - [docs/definition-of-done.md](definition-of-done.md)
 - [docs/phase-1-plan.md](phase-1-plan.md)
+- [docs/phase-1.5-manual-validation.md](phase-1.5-manual-validation.md)
+- [docs/phase-2-plan.md](phase-2-plan.md)
+- [docs/phase-2.1-plan.md](phase-2.1-plan.md)
+- [docs/phase-2.1.5-manual-validation.md](phase-2.1.5-manual-validation.md)
+- [docs/phase-2.2-plan.md](phase-2.2-plan.md)
+- [docs/phase-2.2.5-manual-validation.md](phase-2.2.5-manual-validation.md)
+- [docs/phase-3-plan.md](phase-3-plan.md)
+- [docs/phase-3.1-plan.md](phase-3.1-plan.md)
+- [docs/phase-3.1.5-manual-validation.md](phase-3.1.5-manual-validation.md)
+- [docs/phase-3.2-plan.md](phase-3.2-plan.md)
+- [docs/phase-3.2.5-manual-validation.md](phase-3.2.5-manual-validation.md)
+- [docs/phase-4-plan.md](phase-4-plan.md)
+- [docs/phase-4.1-plan.md](phase-4.1-plan.md)
+- [docs/phase-4.2-plan.md](phase-4.2-plan.md)
+- [docs/phase-4.3-plan.md](phase-4.3-plan.md)
+- [docs/phase-4.4-plan.md](phase-4.4-plan.md)
+- [docs/phase-4.5-plan.md](phase-4.5-plan.md)
+- [docs/phase-4.6-plan.md](phase-4.6-plan.md)
 - [docs/requirements/functional-requirements.md](requirements/functional-requirements.md)
 - [docs/requirements/non-functional-requirements.md](requirements/non-functional-requirements.md)
 - [docs/requirements/user-stories.md](requirements/user-stories.md)
