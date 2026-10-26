@@ -24,7 +24,7 @@ def _serializer(settings: Settings) -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(settings.session_secret, salt=_SALT)
 
 
-def generate_oauth_nonce() -> str:
+def new_login_nonce() -> str:
     """Nonce aleatório (122 bits, os.urandom) do cookie, sem relação com o segredo de assinatura."""
     return uuid.uuid4().hex
 
