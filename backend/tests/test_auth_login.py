@@ -1,3 +1,4 @@
+import hashlib
 from urllib.parse import parse_qs, urlparse
 
 
@@ -15,4 +16,5 @@ def test_login_redirects_to_github_with_state(client):
     assert "state" in query
 
     state_cookie = response.cookies.get("portal_oauth_state")
-    assert state_cookie == query["state"][0]
+    assert state_cookie == hashlib.sha256(query["state"][0].encode()).hexdigest()
+    assert state_cookie != query["state"][0]

@@ -34,7 +34,10 @@ usa exclusivamente o installation access token da GitHub App.
 1.  Usuário acessa o frontend (não autenticado).
 2.  Frontend chama GET /auth/login (redirecionamento de navegador).
 3.  Backend gera um `state` aleatório de curta duração e o associa a uma
-    sessão temporária (ex.: cookie assinado de curta duração).
+    sessão temporária: o `state` é assinado e de curta duração, e o
+    cookie `HttpOnly` guarda apenas o digest SHA-256 dele (nunca o valor
+    em claro); no callback o digest do `state` recebido é comparado ao
+    cookie e a assinatura/expiração do `state` é verificada.
 4.  Backend redireciona o navegador para a página de autorização OAuth do
     GitHub, incluindo o `state`.
 5.  Usuário autoriza o acesso no GitHub.

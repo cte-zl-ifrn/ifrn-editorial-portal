@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import RedirectResponse
 
+from ..auth.oauth_state import state_cookie_value
 from ..auth.session import create_session_cookie_value
 from ..dependencies import HttpClientDep, SettingsDep
 from ..logging import get_logger, log_event
@@ -17,7 +18,7 @@ def login(settings: SettingsDep) -> RedirectResponse:
     response = RedirectResponse(url=authorize_url, status_code=302)
     response.set_cookie(
         key=settings.oauth_state_cookie_name,
-        value=state,
+        value=state_cookie_value(state),
         max_age=settings.oauth_state_max_age_seconds,
         httponly=True,
         secure=settings.cookie_secure,
