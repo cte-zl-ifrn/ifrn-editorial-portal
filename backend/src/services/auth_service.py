@@ -15,8 +15,8 @@ from .authorization_service import check_user_authorization
 
 
 def build_authorize_url(settings: Settings) -> tuple[str, str]:
-    """Retorna (url_de_autorizacao, state_assinado)."""
-    state = generate_oauth_state(settings)
+    """Retorna (url_de_autorizacao, nonce_para_o_cookie)."""
+    state, nonce = generate_oauth_state(settings)
     params = {
         "client_id": settings.github_oauth_client_id,
         "redirect_uri": settings.github_oauth_redirect_uri,
@@ -24,7 +24,7 @@ def build_authorize_url(settings: Settings) -> tuple[str, str]:
         "allow_signup": "false",
     }
     url = f"{settings.github_oauth_base_url}/login/oauth/authorize?{urlencode(params)}"
-    return url, state
+    return url, nonce
 
 
 def complete_login(

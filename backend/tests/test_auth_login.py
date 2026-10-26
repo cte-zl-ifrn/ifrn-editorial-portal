@@ -1,9 +1,7 @@
 from urllib.parse import parse_qs, urlparse
 
-from src.auth.oauth_state import state_cookie_value
 
-
-def test_login_redirects_to_github_with_state(client, settings):
+def test_login_redirects_to_github_with_state(client):
     response = client.get("/auth/login", follow_redirects=False)
 
     assert response.status_code == 302
@@ -17,5 +15,7 @@ def test_login_redirects_to_github_with_state(client, settings):
     assert "state" in query
 
     state_cookie = response.cookies.get("portal_oauth_state")
-    assert state_cookie == state_cookie_value(settings, query["state"][0])
+    # o cookie guarda só o nonce; o state assinado vai na URL
+    assert state_cookie
     assert state_cookie != query["state"][0]
+    assert len(state_cookie) < len(query["state"][0])
