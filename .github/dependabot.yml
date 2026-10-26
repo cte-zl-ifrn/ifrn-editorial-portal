@@ -15,6 +15,11 @@ updates:
       # TS 7 ainda não é suportado por vue-tsc nem typescript-eslint.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # vitest e @vitest/* devem migrar juntos para o major 5.
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
       # Tipos devem acompanhar o Node do CI (22).
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
