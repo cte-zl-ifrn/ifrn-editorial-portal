@@ -24,14 +24,14 @@ def _serializer(settings: Settings) -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(settings.session_secret, salt=_SALT)
 
 
-def generate_oauth_state(settings: Settings) -> tuple[str, str]:
-    """Retorna (state_assinado, nonce).
+def generate_oauth_nonce() -> str:
+    """Nonce aleatório do cookie, sem relação com o segredo de assinatura."""
+    return secrets.token_urlsafe(16)
 
-    O state assinado vai na URL de autorização; o nonce aleatório (sem
-    relação com o segredo) vai no cookie.
-    """
-    nonce = secrets.token_urlsafe(16)
-    return _serializer(settings).dumps({"nonce": nonce}), nonce
+
+def generate_oauth_state(settings: Settings, nonce: str) -> str:
+    """State assinado (com o nonce) enviado na URL de autorização."""
+    return _serializer(settings).dumps({"nonce": nonce})
 
 
 def validate_oauth_state(
