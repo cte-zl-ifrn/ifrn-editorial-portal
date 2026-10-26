@@ -1,8 +1,8 @@
-import hashlib
+from src.auth.oauth_state import state_cookie_value
 from urllib.parse import parse_qs, urlparse
 
 
-def test_login_redirects_to_github_with_state(client):
+def test_login_redirects_to_github_with_state(client, settings):
     response = client.get("/auth/login", follow_redirects=False)
 
     assert response.status_code == 302
@@ -16,5 +16,5 @@ def test_login_redirects_to_github_with_state(client):
     assert "state" in query
 
     state_cookie = response.cookies.get("portal_oauth_state")
-    assert state_cookie == hashlib.sha256(query["state"][0].encode()).hexdigest()
+    assert state_cookie == state_cookie_value(settings, query["state"][0])
     assert state_cookie != query["state"][0]
