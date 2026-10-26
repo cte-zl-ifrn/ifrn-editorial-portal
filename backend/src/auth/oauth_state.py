@@ -10,7 +10,7 @@ aleatório, que precisa casar com o nonce dentro do state.
 from __future__ import annotations
 
 import hmac
-import secrets
+import uuid
 
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
@@ -25,8 +25,8 @@ def _serializer(settings: Settings) -> URLSafeTimedSerializer:
 
 
 def generate_oauth_nonce() -> str:
-    """Nonce aleatório do cookie, sem relação com o segredo de assinatura."""
-    return secrets.token_urlsafe(16)
+    """Nonce aleatório (122 bits, os.urandom) do cookie, sem relação com o segredo de assinatura."""
+    return uuid.uuid4().hex
 
 
 def generate_oauth_state(settings: Settings, nonce: str) -> str:
