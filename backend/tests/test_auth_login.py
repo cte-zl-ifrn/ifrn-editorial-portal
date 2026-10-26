@@ -15,4 +15,7 @@ def test_login_redirects_to_github_with_state(client):
     assert "state" in query
 
     state_cookie = response.cookies.get("portal_oauth_state")
-    assert state_cookie == query["state"][0]
+    # o cookie guarda só o nonce; o state assinado vai na URL
+    assert state_cookie
+    assert state_cookie != query["state"][0]
+    assert len(state_cookie) < len(query["state"][0])

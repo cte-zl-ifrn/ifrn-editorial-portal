@@ -1,3 +1,5 @@
+from urllib.parse import parse_qs, urlparse
+
 import respx
 from httpx import Response
 
@@ -28,8 +30,8 @@ def test_callback_with_valid_state_creates_session(client):
     _mock_successful_github(respx)
 
     login_response = client.get("/auth/login", follow_redirects=False)
-    state = login_response.cookies["portal_oauth_state"]
-    client.cookies.set("portal_oauth_state", state)
+    state = parse_qs(urlparse(login_response.headers["location"]).query)["state"][0]
+    client.cookies.set("portal_oauth_state", login_response.cookies["portal_oauth_state"])
 
     response = client.get(
         "/auth/callback",
@@ -69,6 +71,24 @@ def test_callback_with_mismatched_state_is_rejected(client):
     response = client.get(
         "/auth/callback",
         params={"code": "abc123", "state": "a-different-state-value"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_oauth_state"
+
+
+@respx.mock
+def test_callback_with_cookie_holding_clear_state_is_rejected(client):
+    _mock_successful_github(respx)
+
+    login_response = client.get("/auth/login", follow_redirects=False)
+    state = parse_qs(urlparse(login_response.headers["location"]).query)["state"][0]
+    client.cookies.set("portal_oauth_state", state)
+
+    response = client.get(
+        "/auth/callback",
+        params={"code": "abc123", "state": state},
         follow_redirects=False,
     )
 

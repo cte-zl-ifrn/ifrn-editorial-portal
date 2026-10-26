@@ -7,16 +7,19 @@ from urllib.parse import urlencode
 
 import httpx
 
-from ..auth.oauth_state import generate_oauth_state, validate_oauth_state
+from ..auth.oauth_state import (
+    generate_oauth_state,
+    validate_oauth_state,
+)
 from ..auth.session import SessionData
 from ..config import Settings
 from ..github.client import exchange_code_for_token, get_authenticated_user
 from .authorization_service import check_user_authorization
 
 
-def build_authorize_url(settings: Settings) -> tuple[str, str]:
-    """Retorna (url_de_autorizacao, state_assinado)."""
-    state = generate_oauth_state(settings)
+def build_authorize_url(settings: Settings, nonce: str) -> str:
+    """Retorna a URL de autorização, com o state assinado contendo o nonce."""
+    state = generate_oauth_state(settings, nonce)
     params = {
         "client_id": settings.github_oauth_client_id,
         "redirect_uri": settings.github_oauth_redirect_uri,
@@ -24,7 +27,7 @@ def build_authorize_url(settings: Settings) -> tuple[str, str]:
         "allow_signup": "false",
     }
     url = f"{settings.github_oauth_base_url}/login/oauth/authorize?{urlencode(params)}"
-    return url, state
+    return url
 
 
 def complete_login(
